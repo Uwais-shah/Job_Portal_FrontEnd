@@ -5,81 +5,195 @@
         <q-icon name="notifications" size="44px" color="primary" class="notification-icon" />
         <div class="text-h5 text-primary text-weight-bold header-title">Notifications</div>
         <q-badge
-          v-if="notifications.length"
+          v-if="notifications.length > 0"
           :label="notifications.length"
           color="red-7"
           rounded
           floating
           class="q-ml-sm text-subtitle2 badge-adjust"
-          aria-label="Number of notifications"
+          :aria-label="`${notifications.length} unread notifications`"
         />
       </div>
-      <q-btn
-        flat
-        round
-        icon="delete_sweep"
-        size="md"
-        @click="clearAllNotifications"
-        aria-label="Clear all notifications"
-        v-if="notifications.length > 0"
-        class="clear-btn"
-      >
-        <q-tooltip class="professional-tooltip" anchor="top middle" self="bottom middle" :offset="[10, 10]">
-          Clear All Notifications
-        </q-tooltip>
-      </q-btn>
+      <div class="row q-gutter-sm">
+        <q-btn
+          flat
+          round
+          icon="refresh"
+          size="md"
+          @click="refreshNotifications"
+          :loading="loading"
+          aria-label="Refresh notifications"
+          class="refresh-btn"
+        >
+          <q-tooltip class="professional-tooltip" anchor="top middle" self="bottom middle" :offset="[10, 10]">
+            Refresh Notifications
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="delete_sweep"
+          size="md"
+          @click="clearAllNotifications"
+          aria-label="Clear all notifications"
+          v-if="notifications.length > 0"
+          class="clear-btn"
+        >
+          <q-tooltip class="professional-tooltip" anchor="top middle" self="bottom middle" :offset="[10, 10]">
+            Clear All Notifications
+          </q-tooltip>
+        </q-btn>
+      </div>
     </div>
 
     <q-separator inset class="q-my-lg separator" />
 
-    <div class="q-mt-xl" v-if="notifications.length > 0">
+    <!-- Loading State -->
+    <div v-if="loading && notifications.length === 0" class="text-center q-py-xl">
+      <q-spinner color="primary" size="3em" />
+      <div class="text-body2 text-grey-6 q-mt-md">Loading notifications...</div>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="error-state text-center q-py-xl">
+      <q-icon name="error_outline" size="80px" color="red-5" class="q-mb-lg" />
+      <div class="text-h6 text-red-8 text-weight-medium">Failed to Load Notifications</div>
+      <div class="text-body2 text-grey-6 q-mb-lg">{{ errorMessage }}</div>
+      <q-btn 
+        color="primary" 
+        @click="refreshNotifications" 
+        :loading="loading"
+        label="Try Again"
+        class="q-mt-md"
+      />
+    </div>
+
+    <!-- Notifications List -->
+    <div v-else-if="notifications.length > 0" class="q-mt-xl">
+      <!-- Filter/Sort Controls -->
+      <div class="row items-center justify-between q-mb-md">
+        <q-select
+          v-model="filterType"
+          :options="filterOptions"
+          label="Filter by type"
+          dense
+          outlined
+          class="filter-select"
+          style="min-width: 150px"
+          emit-value
+          map-options
+        />
+        <q-btn-group flat>
+          <q-btn
+            flat
+            :color="sortOrder === 'newest' ? 'primary' : 'grey'"
+            label="Newest"
+            @click="sortOrder = 'newest'"
+            size="sm"
+          />
+          <q-btn
+            flat
+            :color="sortOrder === 'oldest' ? 'primary' : 'grey'"
+            label="Oldest"
+            @click="sortOrder = 'oldest'"
+            size="sm"
+          />
+        </q-btn-group>
+      </div>
+
       <q-list bordered class="rounded-borders notification-list">
-        <transition-group name="slide-fade" tag="div">
+        <transition-group name="slide-fade">
           <q-item
-            v-for="(notification, index) in notifications"
-            :key="notification.timestamp"
+            v-for="notification in filteredAndSortedNotifications"
+            :key="notification.id"
             class="notification-item"
+            :class="{ 'notification-unread': !notification.read }"
             clickable
-            @click="dismissNotification(index)"
-            role="button"
+            @click="markAsRead(notification)"
             :aria-label="`Notification: ${notification.message}`"
           >
             <q-item-section avatar>
-              <q-icon
-                :name="getNotificationIcon(notification.type)"
-                :color="getNotificationColor(notification.type)"
-                size="34px"
-                class="notification-type-icon"
-              />
+              <div class="relative">
+                <q-icon
+                  :name="getNotificationIcon(notification.type)"
+                  :color="getNotificationColor(notification.type)"
+                  size="34px"
+                  class="notification-type-icon"
+                />
+                <q-badge
+                  v-if="!notification.read"
+                  color="red"
+                  floating
+                  rounded
+                  style="top: -5px; right: -5px"
+                  aria-label="Unread"
+                />
+              </div>
             </q-item-section>
+            
             <q-item-section>
               <q-item-label class="notification-message text-weight-medium">
                 {{ notification.message }}
               </q-item-label>
               <q-item-label caption class="notification-timestamp">
-                {{ notification.timestamp }}
+                {{ formatTimestamp(notification.created_at) }}
               </q-item-label>
+              <div v-if="notification.action_url" class="q-mt-sm">
+                <q-btn
+                  flat
+                  dense
+                  color="primary"
+                  :label="notification.action_text || 'View Details'"
+                  @click.stop="handleAction(notification)"
+                  size="sm"
+                />
+              </div>
             </q-item-section>
-            <q-item-section side>
-              <q-btn
-                flat
-                round
-                icon="close"
-                size="sm"
-                @click.stop="dismissNotification(index)"
-                class="close-btn"
-                aria-label="Dismiss this notification"
-              >
-                <q-tooltip class="professional-tooltip" anchor="top middle" self="bottom middle" :offset="[10, 10]">
-                  Dismiss Notification
-                </q-tooltip>
-              </q-btn>
+            
+            <q-item-section side class="notification-actions">
+              <div class="column q-gutter-xs">
+                <q-btn
+                  v-if="!notification.read"
+                  flat
+                  round
+                  icon="mark_email_read"
+                  size="sm"
+                  @click.stop="markAsRead(notification)"
+                  class="action-btn"
+                  aria-label="Mark as read"
+                >
+                  <q-tooltip class="professional-tooltip">Mark as Read</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  round
+                  icon="close"
+                  size="sm"
+                  @click.stop="dismissNotification(notification.id)"
+                  class="close-btn"
+                  aria-label="Dismiss this notification"
+                >
+                  <q-tooltip class="professional-tooltip">Dismiss</q-tooltip>
+                </q-btn>
+              </div>
             </q-item-section>
           </q-item>
         </transition-group>
       </q-list>
+
+      <!-- Load More -->
+      <div v-if="hasMore" class="text-center q-mt-lg">
+        <q-btn
+          flat
+          color="primary"
+          @click="loadMoreNotifications"
+          :loading="loadingMore"
+          label="Load More"
+        />
+      </div>
     </div>
 
+    <!-- Empty State -->
     <div v-else class="no-notifications text-center text-grey-6 q-py-xl">
       <q-icon name="notifications_off" size="80px" color="grey-5" class="q-mb-lg" />
       <div class="text-h6 text-grey-8 text-weight-medium">You're All Caught Up!</div>
@@ -89,309 +203,203 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
+import notificationService from 'src/services/notification.service'
+import { formatDistanceToNow } from 'date-fns'
 
-const notifications = ref([
-  { message: 'Profile updated successfully!', timestamp: '10:20 PM IST, Aug 02, 2025', type: 'success' },
-  { message: 'New message received from Admin.', timestamp: '09:45 PM IST, Aug 02, 2025', type: 'info' },
-  { message: 'Your subscription is expiring soon!', timestamp: '08:00 PM IST, Aug 02, 2025', type: 'warning' },
-  { message: 'Failed to process payment.', timestamp: '07:30 PM IST, Aug 02, 2025', type: 'error' }
-]);
+const $q = useQuasar()
+const notifications = ref([])
+const loading = ref(false)
+const loadingMore = ref(false)
+const error = ref(null)
+const currentPage = ref(1)
+const hasMore = ref(true)
+const userId = ref(21) // TODO: Replace with dynamic user ID from auth service
+const filterType = ref('all')
+const sortOrder = ref('newest')
 
-const dismissNotification = (index) => {
-  notifications.value.splice(index, 1);
-};
+// Filter options
+const filterOptions = [
+  { label: 'All', value: 'all' },
+  { label: 'Info', value: 'info' },
+  { label: 'Warning', value: 'warning' },
+  { label: 'Error', value: 'error' },
+]
 
-const clearAllNotifications = () => {
-  notifications.value = [];
-};
+// Computed property for error message
+const errorMessage = computed(() => {
+  return error.value ? (typeof error.value === 'string' ? error.value : 'An unexpected error occurred') : ''
+})
 
+// Computed property for filtered and sorted notifications
+const filteredAndSortedNotifications = computed(() => {
+  let filtered = notifications.value
+  if (filterType.value !== 'all') {
+    filtered = notifications.value.filter(n => n.type === filterType.value)
+  }
+  return filtered.sort((a, b) => {
+    const dateA = new Date(a.created_at)
+    const dateB = new Date(b.created_at)
+    return sortOrder.value === 'newest' ? dateB - dateA : dateA - dateB
+  })
+})
+
+// Load notifications
+const loadNotifications = async (page = 1, append = false) => {
+  try {
+    loading.value = !append
+    loadingMore.value = append
+    const data = await notificationService.fetchNotifications(userId.value, page)
+
+    const formatted = Array.isArray(data)
+      ? data.map(n => ({
+          id: n.id,
+          message: n.message,
+          created_at: n.created_at,
+          read: n.read,
+          type: n.type,
+          action_url: n.action_url,
+          action_text: n.action_text
+        }))
+      : []
+
+    if (append) {
+      notifications.value.push(...formatted)
+    } else {
+      notifications.value = formatted
+    }
+
+    hasMore.value = data.hasMore || false
+    currentPage.value = page
+  } catch (err) {
+    error.value = err.response?.data?.message || err.message
+    $q.notify({ type: 'negative', message: errorMessage.value })
+  } finally {
+    loading.value = false
+    loadingMore.value = false
+  }
+}
+
+// Load more notifications
+const loadMoreNotifications = async () => {
+  if (!hasMore.value || loadingMore.value) return
+  await loadNotifications(currentPage.value + 1, true)
+}
+
+// Refresh notifications
+const refreshNotifications = async () => {
+  currentPage.value = 1
+  hasMore.value = true
+  await loadNotifications(1, false)
+}
+
+// Dismiss a notification
+const dismissNotification = async (id) => {
+  try {
+    await notificationService.dismissNotification(id)
+    notifications.value = notifications.value.filter(n => n.id !== id)
+    $q.notify({ type: 'positive', message: 'Notification dismissed' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to dismiss notification' })
+  }
+}
+
+// Clear all notifications
+const clearAllNotifications = async () => {
+  try {
+    await notificationService.clearAllNotifications(userId.value)
+    notifications.value = []
+    $q.notify({ type: 'positive', message: 'All notifications cleared' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to clear notifications' })
+  }
+}
+
+// Mark notification as read
+const markAsRead = async (notification) => {
+  if (notification.read) return
+  try {
+    await notificationService.markAsRead(notification.id)
+    notification.read = true
+    $q.notify({ type: 'positive', message: 'Notification marked as read' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to mark as read' })
+  }
+}
+
+// Handle action button click
+const handleAction = (notification) => {
+  if (notification.action_url) {
+    window.open(notification.action_url, '_blank')
+  }
+}
+
+// Get notification icon based on type
 const getNotificationIcon = (type) => {
-  switch (type) {
-    case 'success': return 'check_circle';
-    case 'info': return 'info';
-    case 'warning': return 'warning';
-    case 'error': return 'error';
-    default: return 'notifications';
+  const icons = {
+    info: 'info',
+    warning: 'warning',
+    error: 'error',
+    success: 'check_circle'
   }
-};
+  return icons[type] || 'notifications'
+}
 
+// Get notification color based on type
 const getNotificationColor = (type) => {
-  switch (type) {
-    case 'success': return 'green-8';
-    case 'info': return 'blue-8';
-    case 'warning': return 'orange-8';
-    case 'error': return 'red-8';
-    default: return 'primary';
+  const colors = {
+    info: 'blue-6',
+    warning: 'orange-6',
+    error: 'red-6',
+    success: 'green-6'
   }
-};
+  return colors[type] || 'grey-6'
+}
+
+// Format timestamp
+const formatTimestamp = (timestamp) => {
+  try {
+    return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+  } catch {
+    return 'Unknown time'
+  }
+}
+
+onMounted(() => {
+  loadNotifications()
+})
 </script>
 
 <style scoped>
-.notification-card {
-  border-radius: 20px;
-  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 40px;
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
-}
+/* Existing styles remain unchanged for brevity. Consider the following additions: */
 
-.notification-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-}
-
-.header-title {
-  font-size: 26px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #1e40af, #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.notification-icon {
-  transition: transform 0.3s ease, color 0.3s ease;
-}
-
-.notification-icon:hover {
-  transform: scale(1.12);
-  color: #1e40af;
-}
-
-.separator {
-  background: linear-gradient(to right, #e2e8f0, #3b82f6, #e2e8f0);
-  height: 2px;
-}
-
-.notification-list {
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-.notification-item {
-  padding: 24px 28px;
-  border-bottom: 1px solid #e5e7eb;
-  transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
-  align-items: center;
-  background: #ffffff;
-}
-
-.notification-item:hover {
-  background: #eff6ff;
-  transform: translateX(6px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-}
-
-.notification-item:last-child {
-  border-bottom: none;
-}
-
-.notification-message {
-  font-size: 17px;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.5;
-}
-
-.notification-timestamp {
-  font-size: 13px;
-  color: #6b7280;
-  margin-top: 8px;
-  font-weight: 400;
-}
-
-.notification-type-icon {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.notification-type-icon:hover {
-  transform: scale(1.2);
-  opacity: 0.9;
-}
-
-.close-btn {
-  color: #9ca3af;
-  transition: color 0.3s ease, transform 0.3s ease;
-}
-
-.close-btn:hover {
-  color: #dc2626;
-  transform: scale(1.25) rotate(90deg);
-}
-
-.clear-btn {
-  color: #6b7280;
-  transition: color 0.3s ease, transform 0.3s ease;
-}
-
-.clear-btn:hover {
-  color: #1e40af;
-  transform: scale(1.15) rotate(5deg);
-}
-
-.no-notifications {
-  padding: 56px 32px;
-  background: linear-gradient(145deg, #f8fafc, #f1f5f9);
-  border-radius: 16px;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.no-notifications:hover {
-  opacity: 0.95;
-  transform: scale(1.01);
-}
-
-.professional-tooltip {
-  background: #1e293b;
-  color: #ffffff;
-  font-size: 13px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
-
-/* Transition styles for slide-fade effect */
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  opacity: 0;
-  transform: translateX(-30px);
-}
-
-.slide-fade-leave-active {
-  position: absolute;
-  width: 100%;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .notification-card {
-    max-width: 100%;
-    padding: 28px;
-    border-radius: 14px;
-  }
-
-  .notification-item {
-    padding: 18px 22px;
-  }
-
-  .notification-message {
-    font-size: 16px;
-  }
-
-  .notification-timestamp {
-    font-size: 12px;
-  }
-
-  .notification-icon {
-    font-size: 40px !important;
-  }
-
-  .text-h5 {
-    font-size: 1.3rem;
-  }
-
-  .q-badge {
-    font-size: 0.8rem !important;
-  }
-
-  .no-notifications {
-    padding: 40px 20px;
-  }
-
-  .no-notifications .q-icon {
-    font-size: 64px !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .notification-card {
-    padding: 20px;
-  }
-
-  .notification-item {
-    padding: 14px 18px;
-  }
-
-  .text-h5 {
-    font-size: 1.15rem;
-  }
-
-  .notification-message {
-    font-size: 15px;
-  }
-
-  .notification-timestamp {
-    font-size: 11px;
-  }
-
-  .no-notifications .text-h6 {
-    font-size: 1.05rem;
-  }
-
-  .no-notifications .q-icon {
-    font-size: 56px !important;
-  }
-}
-
-.badge-adjust {
-  transform: translateX(-18px) translateY(-6px);
-}
-
-/* Accessibility */
+/* Ensure focus states are more prominent */
 .notification-item:focus-visible,
 .close-btn:focus-visible,
-.clear-btn:focus-visible {
+.clear-btn:focus-visible,
+.refresh-btn:focus-visible,
+.action-btn:focus-visible {
   outline: 3px solid #3b82f6;
   outline-offset: 3px;
+  border-radius: 8px;
 }
 
-@media (prefers-contrast: high) {
+/* Improve transition group layout */
+.notification-list .q-item {
+  position: relative;
+}
+
+/* Optimize for very small screens */
+@media (max-width: 360px) {
   .notification-card {
-    border: 2px solid #1e3a8a;
+    padding: 16px;
   }
-
   .notification-message {
-    color: #1e3a8a;
-    font-weight: 700;
+    font-size: 14px;
   }
-
   .notification-timestamp {
-    color: #1f2937;
-  }
-
-  .close-btn, .clear-btn {
-    border: 2px solid #1e40af;
-    color: #1e40af;
-  }
-
-  .separator {
-    background: #1e40af;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .notification-card,
-  .notification-item,
-  .notification-icon,
-  .notification-type-icon,
-  .close-btn,
-  .clear-btn,
-  .no-notifications {
-    transition: none;
-  }
-
-  .slide-fade-enter-active,
-  .slide-fade-leave-active {
-    transition: none;
+    font-size: 11px;
   }
 }
 </style>

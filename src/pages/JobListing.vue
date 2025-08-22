@@ -238,20 +238,23 @@
 </template>
 
 <script setup>
-// SCRIPT REMAINS THE SAME, NO FUNCTIONALITY CHANGES
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 
 import suggestService from '../services/suggest.service';
 import searchService from '../services/search.service';
 import jobService from '../services/job.service.js';
-
+import api from '../services/auth.service'; // Fixed: single import of API service
 import { authHelpers } from '../services/auth.service';
 
 import JobDetailContent from './JobDetailContent.vue';
 
 const props = defineProps({
   searchQuery: {
+    type: String,
+    default: ''
+  },
+  location: {
     type: String,
     default: ''
   }
@@ -316,14 +319,15 @@ const filters = ref({
   skills: [],
   experienceLevel: [],
   companySize: null,
-  postedDate: null
+  postedDate: null,
+  location: '' 
 });
 
 const availableSkills = ref([]);
 const skillsOptions = ref([]);
 
 const searchTerm = ref(props.searchQuery?.toLowerCase().trim() || '');
-
+const locationTerm = ref(props.location?.toLowerCase().trim() || '');
 const loadingDetail = ref(false);
 const selectedJobId = ref(null);
 const selectedJob = ref(null);
@@ -381,40 +385,59 @@ const fetchJobs = async () => {
   const isLoggedIn = !!currentUser?.id;
 
   try {
-    let result;
     let rawJobs = [];
 
+    // 1️⃣ Keyword search
     if (searchTerm.value && searchTerm.value.length > 0) {
-      result = await searchService.searchJobs(searchTerm.value);
+      const result = await searchService.searchJobs(searchTerm.value);
       rawJobs = result?.success && Array.isArray(result.data?.jobs) ? result.data.jobs : [];
-    } else if (isLoggedIn) {
-      result = await suggestService.getSuggestions(currentUser.id);
+    } 
+    // 2️⃣ Suggested jobs for logged-in users
+    else if (isLoggedIn) {
+      const result = await suggestService.getSuggestions(currentUser.id);
       rawJobs = result?.success && Array.isArray(result.data) ? result.data : [];
-    } else {
-      rawJobs = [];
-    }
+    } 
 
+    // 3️⃣ Location filter
+    const locationFilter = locationTerm.value || (currentUser?.location?.toLowerCase() ?? '');
+    if (locationFilter) {
+  try {
+    const response = await api.get('/jobs/location', {
+      params: { location: locationFilter }
+    });
+    console.log('Jobs by location:', response.data);
+
+    rawJobs = Array.isArray(response.data?.jobs) ? response.data.jobs : [];
+
+  } catch (err) {
+    console.error('Failed to fetch jobs by location', err);
+    rawJobs = [];
+  }
+}
+
+
+    // Normalize jobs
     const mapped = rawJobs.map(normalizeJob);
 
+    // Sort by match if no search term
     if (!searchTerm.value) {
       mapped.sort((a, b) => (b.match || 0) - (a.match || 0));
     }
 
     jobList.value = mapped;
 
+    // Extract skills for filter dropdown
     const allSkills = new Set();
     mapped.forEach(job => {
       job.skills.forEach(skill => {
-        if (skill && skill.trim()) {
-          allSkills.add(skill.trim());
-        }
+        if (skill && skill.trim()) allSkills.add(skill.trim());
       });
     });
     skillsOptions.value = Array.from(allSkills).sort();
     availableSkills.value = skillsOptions.value;
 
   } catch (err) {
-    console.error('API Error:', err);
+    console.error('Failed to fetch jobs', err);
     jobList.value = [];
   }
 };
@@ -485,6 +508,10 @@ const filteredJobs = computed(() => {
       );
       if (!hasSkill) return false;
     }
+    if (locationTerm.value && !job.location?.toLowerCase().includes(locationTerm.value)) {
+      return false;
+    }
+
     if (filters.value.experienceLevel.length > 0) {
       const exp = Number(job.experience_min) || 0;
       const hasLevel = filters.value.experienceLevel.some(level => {
@@ -538,13 +565,19 @@ const clearFilters = () => {
     skills: [],
     experienceLevel: [],
     companySize: null,
-    postedDate: null
+    postedDate: null,
+    location: ''
   };
   sortOption.value = { label: 'Date: Newest First', value: 'dateDesc' };
 };
 
 watch(() => props.searchQuery, (newQuery) => {
   searchTerm.value = newQuery?.toLowerCase().trim() || '';
+  fetchJobs();
+});
+
+watch(() => props.location, (newLoc) => {
+  locationTerm.value = newLoc?.toLowerCase().trim() || '';
   fetchJobs();
 });
 

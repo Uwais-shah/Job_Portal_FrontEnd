@@ -7,29 +7,6 @@
     <!-- Header -->
     <q-card class="header-card q-pa-md q-mb-xl">
       <div class="row justify-between items-center">
-<<<<<<< HEAD
-        <h4 class="q-mt-none q-mb-none text-primary header-title">My Profile</h4>
-        <div class="row items-center q-gutter-sm">
-          <q-btn
-            flat
-            icon="edit"
-            :label="editMode ? 'Cancel' : 'Edit Profile'"
-            class="edit-btn"
-            @click="editMode = !editMode"
-          >
-            <q-tooltip class="professional-tooltip">Edit your profile details</q-tooltip>
-          </q-btn>
-          <q-btn
-            flat
-            icon="account_circle"
-            label="Complete Profile"
-            class="edit-btn"
-            @click="$emit('open-profile')"
-          >
-            <q-tooltip class="professional-tooltip">Complete your profile to get better job matches</q-tooltip>
-          </q-btn>
-        </div>
-=======
         <h4 class="q-mt-none q-mb-none text-primary">My Profile</h4>
         <q-btn
           flat
@@ -38,7 +15,6 @@
           class="edit-btn"
           @click="toggleEditMode"
         />
->>>>>>> 5ae37b3dc7f1e56766ac5181f357b2972b662bcd
       </div>
     </q-card>
 
@@ -77,11 +53,7 @@
             rounded
             class="q-mt-sm"
           />
-<<<<<<< HEAD
-          <div class="text-right text-caption text-primary q-mt-xs">85% Complete</div>
-=======
           <div class="text-right text-caption q-mt-xs">{{ Math.round(profileCompleteness * 100) }}%</div>
->>>>>>> 5ae37b3dc7f1e56766ac5181f357b2972b662bcd
         </div>
       </q-card>
     </div>
@@ -91,87 +63,6 @@
       <div class="section-title">Profile Information</div>
       <div class="row q-col-gutter-lg">
         <div class="col-12 col-md-6">
-<<<<<<< HEAD
-          <q-input
-            v-if="editMode"
-            v-model="profile.firstName"
-            label="First Name"
-            outlined
-            dense
-            class="input-field"
-          />
-          <div v-else class="info-row">
-            <span class="label">First Name:</span>
-            <span class="info-text">{{ profile.firstName }}</span>
-          </div>
-
-          <q-input
-            v-if="editMode"
-            v-model="profile.email"
-            label="Email"
-            outlined
-            dense
-            class="input-field"
-          />
-          <div v-else class="info-row">
-            <span class="label">Email:</span>
-            <span class="info-text">{{ profile.email }}</span>
-          </div>
-
-          <q-input
-            v-if="editMode"
-            v-model="profile.streetAddress"
-            label="Street Address"
-            outlined
-            dense
-            class="input-field"
-          />
-          <div v-else class="info-row">
-            <span class="label">Street Address:</span>
-            <span class="info-text">{{ profile.streetAddress }}</span>
-          </div>
-        </div>
-
-        <div class="col-12 col-md-6">
-          <q-input
-            v-if="editMode"
-            v-model="profile.lastName"
-            label="Last Name"
-            outlined
-            dense
-            class="input-field"
-          />
-          <div v-else class="info-row">
-            <span class="label">Last Name:</span>
-            <span class="info-text">{{ profile.lastName }}</span>
-          </div>
-
-          <q-input
-            v-if="editMode"
-            v-model="profile.phoneNumber"
-            label="Phone Number"
-            outlined
-            dense
-            class="input-field"
-          />
-          <div v-else class="info-row">
-            <span class="label">Phone Number:</span>
-            <span class="info-text">{{ profile.phoneNumber }}</span>
-          </div>
-
-          <q-input
-            v-if="editMode"
-            v-model="profile.zipcode"
-            label="Zip Code"
-            outlined
-            dense
-            class="input-field"
-          />
-          <div v-else class="info-row">
-            <span class="label">Zip Code:</span>
-            <span class="info-text">{{ profile.zipcode }}</span>
-          </div>
-=======
           <q-input 
             v-if="editMode" 
             v-model="profile.firstName" 
@@ -233,7 +124,6 @@
             class="q-mb-md"
           />
           <div v-else class="q-mb-md"><span class="label">Zip Code:</span> {{ profile.zipcode }}</div>
->>>>>>> 5ae37b3dc7f1e56766ac5181f357b2972b662bcd
         </div>
       </div>
     </q-card>
@@ -366,24 +256,6 @@
             </div>
 
             <div v-else class="q-gutter-sm">
-<<<<<<< HEAD
-              <q-input v-model="exp.title" label="Job Title" dense outlined class="input-field" />
-              <q-input v-model="exp.company" label="Company" dense outlined class="input-field" />
-              <q-input v-model="exp.description" label="Description" type="textarea" dense outlined class="input-field" />
-              <q-input v-model="exp.start_date" type="date" label="Start Date" dense outlined class="input-field" />
-              <q-input v-model="exp.end_date" type="date" label="End Date" dense outlined class="input-field" />
-              <q-btn
-                icon="delete"
-                color="negative"
-                flat
-                dense
-                @click="removeExperience(index)"
-                size="sm"
-                class="delete-btn"
-              >
-                <q-tooltip class="professional-tooltip">Remove Experience</q-tooltip>
-              </q-btn>
-=======
               <q-input v-model="exp.title" label="Job Title" dense outlined />
               <q-input v-model="exp.company" label="Company" dense outlined />
               <q-input v-model="exp.description" label="Description" type="textarea" dense outlined />
@@ -396,7 +268,6 @@
                 @click="removeExperience(index)"
                 size="sm"
               />
->>>>>>> 5ae37b3dc7f1e56766ac5181f357b2972b662bcd
               <q-separator spaced />
             </div>
           </div>

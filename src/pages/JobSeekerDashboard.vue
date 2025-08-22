@@ -177,11 +177,6 @@ import MyApplications from 'components/MyApplications.vue';
 import UserProfile from 'src/components/UserProfile.vue';
 import NotificationComponent from 'src/components/NotificationsPage.vue';
 import SettingsComponent from 'src/components/SettingsPage.vue';
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 5ae37b3dc7f1e56766ac5181f357b2972b662bcd
 import { useRouter } from 'vue-router';
 import { ref, onMounted } from 'vue';
 import { bookmarkService } from '../services/bookmarkService';

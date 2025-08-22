@@ -4,7 +4,6 @@
     <AppHeader />
 
     <section class="hero">
-
       <div class="hero-background-strip"></div>
       
       <h1 class="tagline" style="color: #2a2a2a; text-shadow: 0 0 5px rgba(45, 108, 255, 0.442), 0 0 6px rgba(45, 108, 255, 0.442), 0 0 8px rgba(45, 108, 255, 0.442);">Your Dream Job is Just a Click Away <br/><span class="handwritten">Explore. Apply. Succeed.</span></h1>
@@ -13,31 +12,32 @@
       </p>
 
       <div class="search-box">
-    <input type="text" placeholder="🔍 Job title or keyword" v-model="searchInput" />
-        <input type="text" placeholder="📍 City, state, or remote" />
+        <input type="text" placeholder="🔍 Job title or keyword" v-model="searchInput" />
+        <input type="text" placeholder="📍 City, state, or remote" v-model="locationInput" />
         <button @click="performSearch">Search Jobs</button>
       </div>
 
-        <div class="hero-stats" ref="heroStats">
-          <div><strong ref="statJobs">0</strong> Active Jobs</div>
-          <div><strong ref="statCompanies">0</strong> Companies</div>
-          <div><strong ref="statSeekers">0</strong>Job Seekers</div>
-        </div>
+      <div class="hero-stats" ref="heroStats">
+        <div><strong ref="statJobs">0</strong> Active Jobs</div>
+        <div><strong ref="statCompanies">0</strong> Companies</div>
+        <div><strong ref="statSeekers">0</strong> Job Seekers</div>
+      </div>
     </section>
    
     <section v-if="isLoggedIn">
-      <JobListingPage :searchQuery="searchInput" />
+      <JobListingPage :searchQuery="searchInput" :location="locationInput" />
     </section>
-<section v-if="isLoggedIn && !isEmployer">
-  <SuggestedSkills />
-</section>
+
+    <section v-if="isLoggedIn && !isEmployer">
+      <SuggestedSkills />
+    </section>
+
     <div v-else class="login-prompt">
       <p>
         <q-icon name="lock" size="1.2em" class="q-mr-sm" />
         Please <router-link to="/login">log in</router-link> to get personalized job suggestions.
       </p>
     </div>
-
 
     <section v-if="!isEmployer" class="categories">
       <h2>Browse Jobs by <span>Category</span></h2>
@@ -53,51 +53,52 @@
           <p class="count">12,500+ jobs</p>
           <small>Software, Web Development, Data Science</small>
         </q-card>
-        <div class="category-card">
+        <q-card class="category-card cursor-pointer" @click="gotoCategory('Marketing')">
           <div class="icon">📈</div>
           <h3>Marketing & Sales</h3>
           <p class="count">8,300+ jobs</p>
           <small>Digital Marketing, Sales, Business Development</small>
-        </div>
-        <div class="category-card">
+        </q-card>
+        <q-card class="category-card cursor-pointer" @click="gotoCategory('Finance')">
           <div class="icon">💰</div>
           <h3>Finance & Accounting</h3>
           <p class="count">6,700+ jobs</p>
           <small>Accounting, Financial Analysis, Investment</small>
-        </div>
-        <div class="category-card">
+        </q-card>
+        <q-card class="category-card cursor-pointer" @click="gotoCategory('HR')">
           <div class="icon">👥</div>
           <h3>Human Resources</h3>
           <p class="count">4,200+ jobs</p>
           <small>HR Management, Recruitment, Training</small>
-        </div>
-        <div class="category-card">
+        </q-card>
+        <q-card class="category-card cursor-pointer" @click="gotoCategory('Business')">
           <div class="icon">📦</div>
           <h3>Business & Consulting</h3>
           <p class="count">3,800+ jobs</p>
           <small>Strategy, Operations, Management</small>
-        </div>
-        <div class="category-card">
+        </q-card>
+        <q-card class="category-card cursor-pointer" @click="gotoCategory('Design')">
           <div class="icon">🎨</div>
           <h3>Design & Creative</h3>
           <p class="count">2,900+ jobs</p>
           <small>UI/UX, Graphics, Content Creation</small>
-        </div>
-        <div class="category-card">
+        </q-card>
+        <q-card class="category-card cursor-pointer" @click="gotoCategory('Legal')">
           <div class="icon">🛡️</div>
           <h3>Legal & Compliance</h3>
           <p class="count">1,500+ jobs</p>
           <small>Legal Affairs, Compliance, Risk</small>
-        </div>
-        <div class="category-card">
+        </q-card>
+        <q-card class="category-card cursor-pointer" @click="gotoCategory('Healthcare')">
           <div class="icon">⚕️</div>
           <h3>Healthcare & Medical</h3>
           <p class="count">5,200+ jobs</p>
           <small>Medical, Nursing, Healthcare Admin</small>
-        </div>
+        </q-card>
       </div>
     </section>
-        <section v-if="!isLoggedIn" class="how-it-works">
+
+    <section v-if="!isLoggedIn" class="how-it-works">
       <h2>How It Works</h2>
       <p class="subtitle">
         Get started with your job search in three simple steps. Our streamlined process<br />
@@ -142,8 +143,6 @@
         </div>
       </div>
     </section>
-
-    <!-- Add other homepage sections here -->
     
     <AppFooter />
   </div>
@@ -153,11 +152,12 @@
 import AppHeader from '../components/HeaderPart.vue';
 import AppFooter from '../components/FooterPart.vue';
 import JobListingPage from './JobListing.vue';
+import SuggestedSkills from '../components/SuggestedSkills.vue';
 import { useRouter } from 'vue-router';
-import { ref, onMounted, computed } from 'vue'; // Added computed here
+import { ref, onMounted, computed } from 'vue';
 import { useAuthStore } from '../stores/auth.store';
 import { storeToRefs } from 'pinia';
-import SuggestedSkills from '../components/SuggestedSkills.vue';
+
 export default {
   name: 'HomePage',
   components: {
@@ -169,32 +169,33 @@ export default {
   setup() {
     const router = useRouter();
     const searchInput = ref('');
+    const locationInput = ref('');
     const authStore = useAuthStore();
     const { isAuthenticated } = storeToRefs(authStore);
     const isLoggedIn = computed(() => !!authStore.userData);
     const isEmployer = computed(() => authStore.userData?.role === 'company');
 
-    // DECLARED REFS for template elements to enable animation
+    // Template refs for animation
     const heroStats = ref(null);
     const statJobs = ref(null);
     const statCompanies = ref(null);
     const statSeekers = ref(null);
 
-    // This is the animation logic for the counters
+    // Animation logic for the counters
     function animateCount(refVar, target, duration = 2000) {
-        if (!refVar.value) return; // Guard clause if the element isn't rendered
-        const start = 0;
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const currentVal = Math.floor(progress * (target - start) + start);
-            refVar.value.innerText = currentVal.toLocaleString();
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            }
-        };
-        window.requestAnimationFrame(step);
+      if (!refVar.value) return;
+      const start = 0;
+      let startTimestamp = null;
+      const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const currentVal = Math.floor(progress * (target - start) + start);
+        refVar.value.innerText = currentVal.toLocaleString();
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        }
+      };
+      window.requestAnimationFrame(step);
     }
 
     function initIntersectionObserver() {
@@ -227,7 +228,18 @@ export default {
     }
 
     function performSearch() {
-      searchInput.value = searchInput.value.trim();
+      const searchQuery = searchInput.value.trim();
+      const locationQuery = locationInput.value.trim();
+      
+      if (searchQuery || locationQuery) {
+        router.push({
+          name: 'JobListing',
+          query: {
+            search: searchQuery,
+            location: locationQuery
+          }
+        });
+      }
     }
 
     onMounted(() => {
@@ -239,6 +251,7 @@ export default {
       gotoCategory,
       isAuthenticated,
       searchInput,
+      locationInput,
       performSearch,
       isLoggedIn,
       isEmployer,
@@ -251,43 +264,52 @@ export default {
 };
 </script>
 
-
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Satisfy&display=swap');
+
 .sticky-header {
   position: sticky;
   top: 0;
   z-index: 1000;
-  /* The header component has its own background and shadow */
 }
+
 @keyframes breathe {
-  0%   { background-color: #e1f5fe; } /* Light Sky Blue */
-  20%  { background-color: #e0f2f1; } /* Light Cyan/Green */
-  40%  { background-color: #fffde7; } /* Light Yellow */
-  60%  { background-color: #f3e5f5; } /* Light Violet/Purple */
-  80%  { background-color: #e3f2fd; } /* Light Blue */
-  100% { background-color: #e1f5fe; } /* Back to Light Sky Blue */
+  0%   { background-color: #e1f5fe; }
+  20%  { background-color: #e0f2f1; }
+  40%  { background-color: #fffde7; }
+  60%  { background-color: #f3e5f5; }
+  80%  { background-color: #e3f2fd; }
+  100% { background-color: #e1f5fe; }
 }
+
 @keyframes hover-breathe {
-  0%   { background-color: #e3f2fd; } /* Light Blue */
-  25%  { background-color: #fff3f7ff; } /* Light Pink */
-  50%  { background-color: #fbf4e8ff; } /* Light Orange */
-  75%  { background-color: #fffde7; } /* Light Yellow */
-  100% { background-color: #e3f2fd; } /* Back to Light Blue */
+  0%   { background-color: #e3f2fd; }
+  25%  { background-color: #fff3f7ff; }
+  50%  { background-color: #fbf4e8ff; }
+  75%  { background-color: #fffde7; }
+  100% { background-color: #e3f2fd; }
 }
+
 @keyframes sea-breathe {
-  0%   { background-color: #e0f7fa; } /* Light Sea Blue */
-  50%  { background-color: #e0f2f1; } /* Light Sea Green */
-  100% { background-color: #e0f7fa; } /* Back to Light Sea Blue */
+  0%   { background-color: #e0f7fa; }
+  50%  { background-color: #e0f2f1; }
+  100% { background-color: #e0f7fa; }
 }
-/* ADD THESE NEW STYLES */
 
 @keyframes animated-gradient {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
-/* In <style scoped> */
+
+@keyframes textGlow {
+  0%, 100% {
+    text-shadow: 0 0 5px rgba(45, 108, 255, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(45, 108, 255, 0.8), 0 0 30px rgba(45, 108, 255, 0.6);
+  }
+}
 
 .hero::before {
   content: '';
@@ -296,56 +318,44 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 0; /* Places it behind the hero content */
-
-  /* 1. The background image */
+  z-index: 0;
   background-image: url('src/assets/bghome2.jpeg');
   background-size: cover;
   background-position: center;
-  
-  /* 2. A soft blur effect */
   filter: blur(5px);
-  
-  /* 3. The mask that makes the center transparent */
   -webkit-mask-image: 
-  /* This first mask makes the center transparent */
-  linear-gradient(to right, 
-    black 15%, transparent 45%, transparent 55%, black 85%
-  ),
-  /* This second mask makes the bottom edge blurry */
-  linear-gradient(to bottom,
-    black 85%, 
-    transparent 100%
-  );
-
-mask-image: 
-  linear-gradient(to right, 
-    black 15%, transparent 45%, transparent 55%, black 85%
-  ),
-  linear-gradient(to bottom,
-    black 85%, 
-    transparent 100%
-  );
+    linear-gradient(to right, 
+      black 15%, transparent 45%, transparent 55%, black 85%
+    ),
+    linear-gradient(to bottom,
+      black 85%, 
+      transparent 100%
+    );
+  mask-image: 
+    linear-gradient(to right, 
+      black 15%, transparent 45%, transparent 55%, black 85%
+    ),
+    linear-gradient(to bottom,
+      black 85%, 
+      transparent 100%
+    );
 }
+
 .hero-background-strip {
   position: absolute;
   top: 50%;
-  left: -10%; /* Extend beyond the edges */
+  left: -10%;
   right: -10%;
-  height: 450px; /* Adjust height as needed */
-  transform: translateY(-50%) rotate(-2deg); /* Slight angle for dynamism */
-  z-index: 0; /* Place it behind the content */
-
-  /* A soft, multi-tone blue gradient */
+  height: 450px;
+  transform: translateY(-50%) rotate(-2deg);
+  z-index: 0;
   background: linear-gradient(-45deg, #c8e4f9, #b9d4ff, #baf7fe, #9dd3ff);
   background-size: 400% 400%;
   animation: animated-gradient 15s ease infinite;
-  
-  filter: blur(20px); /* Softens the entire strip */
-  opacity: 0.7; /* Make it subtle */
+  filter: blur(20px);
+  opacity: 0.7;
 }
 
-/* Ensure hero content stays on top of the new strip */
 .hero h1,
 .hero p,
 .hero .search-box,
@@ -361,7 +371,6 @@ mask-image:
   line-height: 1.6;
 }
 
-/* Navbar */
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -422,14 +431,21 @@ mask-image:
   background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(21, 101, 192, 0.2), rgba(0, 0, 0, 0));
   margin: 20px auto;
 }
+
 .handwritten {
+  font-family: 'Satisfy', cursive;
+  font-size: 30px;
+  color: #1565c0;
+  display: inline-block;
+  margin-top: 10px;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.05);
   opacity: 0;
   transform: scale(.8);
-  animation: zoomIn .6s ease-out forwards, textGlow 4s infinite ease-in-out; /* Add the glow animation */
-  animation-delay: .2s, 0s; /* Adjust delays if needed */
+  animation: zoomIn .6s ease-out forwards, textGlow 4s infinite ease-in-out;
+  animation-delay: .2s, 0s;
 }
 
-/* Hero */
 .hero {
   text-align: center;
   padding: 90px 20px 70px;
@@ -480,7 +496,6 @@ mask-image:
   color: #1565c0; 
 }
 
-/* Search */
 .search-box {
   margin-top: 40px;
   display: flex;
@@ -489,7 +504,7 @@ mask-image:
   flex-wrap: wrap;
   background: #fff;
   padding: 12px;
- border-radius: 12px;
+  border-radius: 12px;
   box-shadow: 0 8px 32px rgba(21, 101, 192, 0.15);
   max-width: 850px;
   margin-left: auto;
@@ -519,44 +534,35 @@ mask-image:
 }
 .search-box button:hover {
   background-color: #1c4fcf;
+  transform: scale(1.05);
 }
 
-/* Stats */
-.stats {
-  display: flex;
-  justify-content: center;
-  gap: 60px;
-  margin-top: 50px;
-  font-size: 17px;
-  color: #444;
-}
-.stats strong {
-  font-size: 24px;
-  color: #1565c0;
+.search-box input:hover {
+  border-color: #1565c0;
+  box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.2);
+  transition: all 0.3s ease;
 }
 
-/* logged-out message */
 .login-prompt {
   text-align: center;
   font-size: 25px;
   font-family: monospace;
   padding: 30px 20px;
-  background-color: transparent; /* Changed from a solid color */
+  background-color: transparent;
   border: 1px solid #e0e0e0;
   border-radius: 12px;
   margin: 40px auto;
   max-width: 800px;
   color: #555;
-  transition: background-color 0.4s ease; /* For a smooth start to the hover */
+  transition: background-color 0.4s ease;
 }
 
-/* ADD THIS: Apply the new animation on hover */
 .login-prompt:hover {
   animation: sea-breathe 8s ease-in-out infinite;
 }
 
 .login-prompt a {
-  color: #1565c0; /* Your theme's primary blue color */
+  color: #1565c0;
   font-weight: 600;
   text-decoration: none;
 }
@@ -565,14 +571,13 @@ mask-image:
   text-decoration: underline;
 }
 
-/* Categories */
 .categories {
   text-align: center;
   font-family: Lucida Bright;
   padding: 30px 30px 70px;
-  background-color: transparent; /* Changed from a solid color */
-  border-radius: 20px; /* Add border-radius for a nicer hover effect */
-  transition: background-color 0.5s ease; /* Smooth transition in */
+  background-color: transparent;
+  border-radius: 20px;
+  transition: background-color 0.5s ease;
 }
 .categories h2 {
   font-size: 40px;
@@ -585,12 +590,11 @@ mask-image:
 }
 .categories p {
   font-size: 20px;
-  font-family:Rockwell;
+  font-family: Rockwell;
   color: #666;
 }
 .category-grid {
   display: flex; 
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));         
   flex-wrap: wrap;        
   justify-content: center;
   gap: 32px;
@@ -603,7 +607,7 @@ mask-image:
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease;
   text-align: center;
-  font-style:bold;
+  font-style: bold;
   min-width: 260px;
   max-width: 300px;
   min-height: 330px;
@@ -636,23 +640,22 @@ mask-image:
   font-size: 13px;
 }
 
-/* How it works */
 .how-it-works {
   padding: 80px 30px;
   text-align: center;
-  background-color: transparent; /* Changed from a solid color */
+  background-color: transparent;
   border-radius: 20px;
   transition: background-color 0.5s ease;
 }
 .how-it-works h2 {
   font-size: 40px;
-  font-family:MV Boli;
+  font-family: MV Boli;
   color: #1565c0;
   margin-bottom: 10px;
 }
 .how-it-works .subtitle {
   font-size: 20px;
-  font-style:bold;
+  font-style: bold;
   font-family: Geneva;
   color: #666;
   margin-bottom: 50px;
@@ -677,6 +680,11 @@ mask-image:
   max-width: 300px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
   text-align: center;
+}
+.step:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(21, 101, 192, 0.1);
+  transition: all 0.3s ease;
 }
 .step-icon {
   font-size: 36px;
@@ -737,8 +745,16 @@ mask-image:
   max-width: 200px;
 }
 
+.feature-item:hover {
+  transform: translateY(-4px);
+  transition: all 0.3s ease;
+  background-color: #f4f8ff;
+  border-radius: 10px;
+  padding: 10px;
+}
+
 .feature-item strong {
-  color: #1565c0; /* professional blue */
+  color: #1565c0;
   font-weight: 600;
   font-size: 1.1rem;
   margin-bottom: 8px;
@@ -748,17 +764,6 @@ mask-image:
   color: #555;
   font-size: 0.9rem;
   line-height: 1.3;
-}
-
-.handwritten {
-  font-family: 'Satisfy', cursive;
-  font-size: 30px;
-  color: #1565c0; /* Keep the same blue or adjust */
-  display: inline-block;
-  margin-top: 10px;
-  letter-spacing: 1px;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.05);
-  font-size: larger;
 }
 
 .footer {
@@ -882,31 +887,4 @@ mask-image:
 .nav-link.router-link-exact-active::after {
   width: 100%;
 }
-
-.search-box input:hover {
-  border-color: #1565c0;
-  box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.2);
-  transition: all 0.3s ease;
-}
-
-.search-box button:hover {
-  transform: scale(1.05);
-  background-color: #1c4fcf;
-}
-
-
-.step:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(21, 101, 192, 0.1);
-  transition: all 0.3s ease;
-}
-
-.feature-item:hover {
-  transform: translateY(-4px);
-  transition: all 0.3s ease;
-  background-color: #f4f8ff;
-  border-radius: 10px;
-  padding: 10px;
-}
-
 </style>
