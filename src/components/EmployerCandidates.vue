@@ -52,12 +52,12 @@
             </q-input>
           </div>
           <div class="col-12 col-md-3">
-            <q-select filled dense v-model="experienceFilter" :options="experienceOptions" 
+            <q-select filled dense v-model="experienceFilter" :options="experienceOptions"
               label="Experience Level" emit-value map-options options-dense clearable
               :disable="!selectedJobId" />
           </div>
           <div class="col-12 col-md-3">
-            <q-select filled dense v-model="statusFilter" :options="statusFilterOptions" 
+            <q-select filled dense v-model="statusFilter" :options="statusFilterOptions"
               label="Status Filter" emit-value map-options options-dense clearable
               :disable="!selectedJobId" />
           </div>
@@ -85,17 +85,17 @@
           <div class="section-header q-mb-sm">
             <div class="text-h6 text-weight-medium">Active Candidates ({{ activeCandidates.length }})</div>
           </div>
-          <q-card 
-            v-for="candidate in activeCandidates" 
-            :key="candidate.id" 
+          <q-card
+            v-for="candidate in activeCandidates"
+            :key="candidate.id"
             class="candidate-card-row q-pa-md"
             :class="{ 'selected-card': selectedCandidates.has(candidate.id) }"
             @click="viewCandidate(candidate)"
           >
             <div class="row items-center no-wrap">
-              <q-checkbox 
-                :model-value="selectedCandidates.has(candidate.id)" 
-                @update:model-value="val => toggleCandidateSelection(candidate, val)" 
+              <q-checkbox
+                :model-value="selectedCandidates.has(candidate.id)"
+                @update:model-value="val => toggleCandidateSelection(candidate, val)"
                 dense
                 @click.stop
               />
@@ -106,7 +106,7 @@
               <div class="column flex-grow">
                 <div class="text-weight-bold">{{ candidate.name }}</div>
                 <div class="text-caption">
-                  Applied {{ formatTimeAgo(candidate.appliedDate) }} | 
+                  Applied {{ formatTimeAgo(candidate.appliedDate) }} |
                   Experience: {{ getExperienceLevel(candidate.id) }}
                 </div>
               </div>
@@ -124,9 +124,9 @@
             class="rejected-section"
           >
             <div class="q-pa-md">
-              <q-card 
-                v-for="candidate in rejectedCandidates" 
-                :key="candidate.id" 
+              <q-card
+                v-for="candidate in rejectedCandidates"
+                :key="candidate.id"
                 class="candidate-card-row rejected-card q-pa-md q-mb-sm"
                 @click="viewCandidate(candidate)"
               >
@@ -137,7 +137,7 @@
                   <div class="column flex-grow">
                     <div class="text-weight-bold text-grey-7">{{ candidate.name }}</div>
                     <div class="text-caption text-grey-5">
-                      Applied {{ formatTimeAgo(candidate.appliedDate) }} | 
+                      Applied {{ formatTimeAgo(candidate.appliedDate) }} |
                       Experience: {{ getExperienceLevel(candidate.id) }}
                     </div>
                   </div>
@@ -170,9 +170,9 @@
           <q-card-section>
             <div class="q-mb-md">
               <div class="text-weight-medium q-mb-sm">Recipients:</div>
-              <q-chip 
-                v-for="email in selectedCandidateEmails" 
-                :key="email" 
+              <q-chip
+                v-for="email in selectedCandidateEmails"
+                :key="email"
                 :label="email"
                 color="primary"
                 text-color="white"
@@ -202,9 +202,9 @@
 
           <q-card-actions align="right">
             <q-btn flat label="Cancel" color="grey" @click="closeEmailDialog" />
-            <q-btn 
-              label="Send Email" 
-              color="primary" 
+            <q-btn
+              label="Send Email"
+              color="primary"
               @click="sendBulkEmail"
               :loading="sendingEmail"
               :disable="!emailSubject || !emailBody"
@@ -216,7 +216,7 @@
       <!-- Candidate Details Modal -->
       <q-dialog v-model="showCandidateDetail">
         <q-card v-if="selectedCandidate" style="width: 600px; height: 700px; max-width: 90vw; max-height: 90vh;">
-          
+
           <!-- Scrollable content -->
           <div style="height: 100%; overflow-y: auto;">
             <q-card-section class="q-pa-md">
@@ -411,7 +411,7 @@ const sendBulkEmail = async () => {
   sendingEmail.value = true;
   try {
     const recipientEmails = selectedCandidateEmails.value;
-    
+
     // Call your backend API to send bulk email
    await api.post('/emails/bulk', {
   recipients: recipientEmails,
@@ -459,12 +459,12 @@ const rejectSelectedCandidates = async () => {
     });
 
     await Promise.all(promises);
-    
+
     $q.notify({
       type: 'positive',
       message: `Successfully rejected ${selectedCandidates.value.size} candidate${selectedCandidates.value.size > 1 ? 's' : ''}`
     });
-    
+
     clearSelection();
   } catch (error) {
     console.error('Error rejecting candidates:', error);
@@ -557,16 +557,16 @@ const selectedCandidateEmails = computed(() => {
 
 const filteredCandidates = computed(() => {
   if (!selectedJobId.value) return [];
-  
+
   let candidates = allCandidates.value.filter(c => c.jobId === selectedJobId.value);
-  
+
   // Search filter
   if (searchQuery.value) {
-    candidates = candidates.filter(c => 
+    candidates = candidates.filter(c =>
       c.name.toLowerCase().includes(searchQuery.value.toLowerCase())
     );
   }
-  
+
   // Experience filter
   if (experienceFilter.value) {
     candidates = candidates.filter(c => {
@@ -579,7 +579,7 @@ const filteredCandidates = computed(() => {
       return expLevel.includes(levelMap[experienceFilter.value]);
     });
   }
-  
+
   // Status filter
   if (statusFilter.value) {
     if (statusFilter.value === 'active') {
@@ -588,7 +588,7 @@ const filteredCandidates = computed(() => {
       candidates = candidates.filter(c => c.status === statusFilter.value);
     }
   }
-  
+
   return candidates;
 });
 
@@ -604,20 +604,20 @@ const rejectedCandidates = computed(() => {
 onMounted(async () => {
   await fetchJobs();
   await fetchCompanyCandidates();
-  
+
   // Pre-fetch profiles for better UX
-  const profilePromises = allCandidates.value.map(candidate => 
+  const profilePromises = allCandidates.value.map(candidate =>
     fetchCandidateProfile(candidate.id).catch(() => {}) // Ignore errors for batch fetch
   );
   await Promise.all(profilePromises);
-  
+
   const jobIdFromQuery = parseInt(route.query.jobId);
   if (jobIdFromQuery && jobs.value.some(j => j.id === jobIdFromQuery)) {
     selectedJobId.value = jobIdFromQuery;
   }
 });
 
-watch(selectedJobId, () => { 
+watch(selectedJobId, () => {
   searchQuery.value = '';
   experienceFilter.value = null;
   statusFilter.value = null;
@@ -758,30 +758,30 @@ const navigate = (link) => {
   flex-direction: column;
 }
 
-.sidebar-section { 
-  border-bottom: 1px solid #243B55; 
+.sidebar-section {
+  border-bottom: 1px solid #243B55;
 }
 
-.nav-list .q-item { 
-  color: #BCCCDC; 
-  padding: 12px; 
-  margin: 4px 12px; 
-  border-radius: 8px; 
+.nav-list .q-item {
+  color: #BCCCDC;
+  padding: 12px;
+  margin: 4px 12px;
+  border-radius: 8px;
 }
 
-.active-link { 
-  background-color: #00529b !important; 
-  color: #ffffff !important; 
-  font-weight: 600; 
+.active-link {
+  background-color: #00529b !important;
+  color: #ffffff !important;
+  font-weight: 600;
 }
 
 /* Content Area */
-.content-title { 
-  color: #0D1B2A; 
+.content-title {
+  color: #0D1B2A;
 }
 
-.subtitle-text { 
-  color: #5A7184; 
+.subtitle-text {
+  color: #5A7184;
 }
 
 .control-bar {
@@ -850,11 +850,11 @@ const navigate = (link) => {
     width: 100%;
     height: auto;
   }
-  
+
   .page-wrapper {
     flex-direction: column;
   }
-  
+
   .candidate-card-row {
     margin: 4px 0;
   }

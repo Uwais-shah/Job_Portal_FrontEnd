@@ -165,35 +165,64 @@ const router = useRouter();
 const $q = useQuasar();
 
 const dashboardStats = ref([
-  { value: 10, label: 'Total Jobs', icon: 'summarize', iconColor: 'blue-5' },
-  { value: 4, label: 'Active Jobs', icon: 'fact_check', iconColor: 'blue-6' },
-  { value: 87, label: 'Total Applicants', icon: 'groups', iconColor: 'blue-7' },
-  { value: 2, label: 'Pending Review', icon: 'pending_actions', iconColor: 'blue-8' }
+  { value: 0, label: 'Total Jobs', icon: 'summarize', iconColor: 'blue-5', key: 'totalJobs' },
+  { value: 0, label: 'Active Jobs', icon: 'fact_check', iconColor: 'blue-6', key: 'activeJobs' },
+  { value: 0, label: 'Total Applicants', icon: 'groups', iconColor: 'blue-7', key: 'totalApplicants' },
+  { value: 0, label: 'Total Reviews', icon: 'rate_review', iconColor: 'blue-8', key: 'totalReviews' },
+  { value: 0, label: 'Total Reports', icon: 'report', iconColor: 'red-6', key: 'totalReports' }
 ]);
 
 const navStats = ref({
   pending_jobs: 2,
 });
 
-const fetchNavStats = async () => {
+const fetchDashboardStats = async () => {
   try {
     const token = authHelpers.getToken();
     if (!token) {
       console.warn('No authentication token found');
       return;
     }
-    const response = await api.get('/jobs/stats', {
+    
+    // Get company ID from the employer data
+    const companyId = employer.value?.id;
+    if (!companyId) {
+      console.error('Company ID not found');
+      return;
+    }
+    
+    // Fetch company stats with the correct endpoint
+    const response = await api.get(`/company/${companyId}/status`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       }
     });
-    if (response.data && response.data.pending_jobs !== undefined) {
-      navStats.value.pending_jobs = response.data.pending_jobs;
+    
+    if (response.data && response.data.success) {
+      const stats = response.data.data;
+      
+      // Update dashboard stats with real data
+      dashboardStats.value.forEach(stat => {
+        if (stats[stat.key] !== undefined) {
+          stat.value = stats[stat.key];
+        }
+      });
+      
+      // Update nav stats if needed
+      if (stats.pendingJobs !== undefined) {
+        navStats.value.pending_jobs = stats.pendingJobs;
+      }
     }
   } catch (error) {
-    console.error('Error fetching navigation stats:', error);
+    console.error('Error fetching dashboard stats:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to load dashboard statistics',
+      position: 'top',
+      timeout: 3000
+    });
   }
 };
 
@@ -239,7 +268,14 @@ const fetchCompanyStatus = async () => {
     if (!token) {
       throw new Error('No authentication token found');
     }
-    const response = await api.get('/company/status', {
+    // Get company ID from the employer data
+    const companyId = employer.value?.id;
+    if (!companyId) {
+      console.error('Company ID not found');
+      throw new Error('Company ID not found');
+    }
+    
+    const response = await api.get(`/company/${companyId}/status`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -273,14 +309,27 @@ const fetchCompanyStatus = async () => {
 
 onMounted(async () => {
   try {
+    // First, load employer data from localStorage
     const storedEmployer = localStorage.getItem('employerData');
     if (storedEmployer) {
       const employerData = JSON.parse(storedEmployer);
-      employer.value = employerData;
+      employer.value = {
+        ...employerData,
+        id: employerData.id || employerData.user_id // Ensure we have the company ID
+      };
       verificationStatus.value = employerData.status || '';
       rejectionReason.value = employerData.rejectionReason || '';
+      
+      // Fetch company status and dashboard stats only if we have a company ID
+      if (employer.value.id) {
+        await Promise.all([
+          fetchCompanyStatus(),
+          fetchDashboardStats()
+        ]);
+      }
     }
-    await fetchCompanyStatus();
+    
+    // Load any broadcast messages
     const storedBroadcast = localStorage.getItem('jobhubBroadcast');
     if (storedBroadcast) {
       const broadcast = JSON.parse(storedBroadcast);
@@ -290,9 +339,8 @@ onMounted(async () => {
         localStorage.removeItem('jobhubBroadcast');
       }
     }
-    await fetchNavStats();
   } catch (error) {
-    console.error('Error fetching stats:', error);
+    console.error('Error initializing dashboard:', error);
   }
 });
 

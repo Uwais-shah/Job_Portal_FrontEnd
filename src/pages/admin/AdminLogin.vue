@@ -99,11 +99,11 @@
 </template>
 
 <script setup>
-// UNCHANGED: The script logic is solid and remains the same.
 import { ref, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import adminService from 'src/services/admin.service';
+import { api } from 'src/boot/axios';
 
 const $q = useQuasar();
 const router = useRouter();
@@ -129,23 +129,69 @@ const handleLogin = async () => {
   errorMessage.value = '';
 
   try {
+    console.log('Attempting login with:', { email: email.value });
+    
+    // Clear any existing tokens and auth data
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminTokenExpiry');
+    delete api.defaults.headers.common['Authorization'];
+    
+    // Call the login service
     const result = await adminService.login({
-      email: email.value,
+      email: email.value.trim(),
       password: password.value
     });
 
-    if (result.success) {
-      localStorage.setItem('adminToken', result.data.token);
+    console.log('Login result:', result);
+
+    if (result.success && result.token) {
+      console.log('Login successful, processing response');
+      
+      const { token, admin, redirectTo } = result;
+      
+      // Store the token in localStorage
+      localStorage.setItem('adminToken', token);
+      
+      // Set axios default headers for subsequent requests
+      api.defaults.headers.common['Authorization'] = token;
+      
+      // Set remember me if needed
       if (rememberMe.value) {
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + 7);
         localStorage.setItem('adminTokenExpiry', expiryDate.getTime().toString());
       }
 
-      const redirectPath = route.query.redirect || '/admin/dashboard';
-      router.push(redirectPath);
+      // Store admin data if available
+      if (admin) {
+        localStorage.setItem('adminData', JSON.stringify(admin));
+      }
+      
+      // Get the redirect path
+      const redirectPath = redirectTo || '/admin/dashboard';
+      console.log('Login successful, redirecting to:', redirectPath);
+      
+      // Use router.push for SPA navigation instead of full page reload
+      await router.push(redirectPath);
+      
+      // Show success notification
+      $q.notify({
+        type: 'positive',
+        message: 'Successfully logged in!',
+        position: 'top'
+      });
+      
     } else {
-      errorMessage.value = result.error || 'Login failed. Please check your credentials and try again.';
+      // Handle login failure
+      const errorMsg = result.error || 'Login failed. Please check your credentials and try again.';
+      console.error('Login failed:', errorMsg);
+      errorMessage.value = errorMsg;
+      
+      // Clear any existing auth data on failed login
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminTokenExpiry');
+      localStorage.removeItem('adminData');
+      delete api.defaults.headers.common['Authorization'];
     }
   } catch (error) {
     console.error('Login error:', error);

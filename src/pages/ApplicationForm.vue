@@ -529,7 +529,7 @@ export default {
         // formData.append('lastName', this.form.lastName);
         // etc...
 
-        const res = await axios.post('http://localhost:3000/api/apply', formData, {
+        const res = await axios.post('http://localhost:3000/api/applications/apply', formData, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'

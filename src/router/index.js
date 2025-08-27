@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from 'stores/auth.store'
 import routes from './routes.js'
+import { api } from 'src/boot/axios'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -47,12 +48,22 @@ async function verifyAdminToken(token) {
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const isAdminRoute = to.matched.some(record => record.path.startsWith('/admin'))
+  const publicAdminPages = ['/admin/login', '/admin/forgot-password']
   const adminToken = localStorage.getItem('adminToken')
+  
+  // Set axios default headers if token exists
+  if (adminToken) {
+    api.defaults.headers.common['Authorization'] = adminToken
+  } else {
+    delete api.defaults.headers.common['Authorization']
+  }
 
   // Handle admin routes
   if (isAdminRoute) {
-    // If trying to access admin login page
-    if (to.name === 'AdminLogin') {
+    const isPublicAdminPage = publicAdminPages.includes(to.path)
+    
+    // If trying to access public admin page (like login)
+    if (isPublicAdminPage) {
       // If already logged in, redirect to dashboard
       if (adminToken) {
         const isValid = await verifyAdminToken(adminToken)
@@ -65,9 +76,8 @@ router.beforeEach(async (to, from, next) => {
 
     // For protected admin routes
     if (!adminToken) {
-      // No token, redirect to login
       return next({
-        name: 'AdminLogin',
+        path: '/admin/login',
         query: { redirect: to.fullPath }
       })
     }
@@ -75,18 +85,22 @@ router.beforeEach(async (to, from, next) => {
     // Verify token for protected routes
     const isValid = await verifyAdminToken(adminToken)
     if (!isValid) {
-      // Invalid token, clear and redirect to login
+      // Clear invalid token
       localStorage.removeItem('adminToken')
-      localStorage.removeItem('adminTokenExpiry')
+      localStorage.removeItem('adminData')
+      delete api.defaults.headers.common['Authorization']
+      
+      // Redirect to login with error message
       return next({
-        name: 'AdminLogin',
-        query: {
-          redirect: to.fullPath,
-          sessionExpired: 'true'
+        path: '/admin/login',
+        query: { 
+          sessionExpired: 'true',
+          redirect: to.fullPath
         }
       })
     }
-    // Continue to the route if it's an admin route
+    
+    // Token is valid, proceed to route
     return next()
   }
 

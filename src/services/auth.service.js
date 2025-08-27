@@ -195,7 +195,20 @@ export const authHelpers = {
   setAuthData: (token, userData) => {
     localStorage.setItem('authToken', token);
     localStorage.setItem('userData', JSON.stringify(userData));
-    localStorage.setItem('userType', 'jobseeker');
+    // Set userType based on the role from userData
+    localStorage.setItem('userType', userData.role || 'jobseeker');
+    
+    // If this is an employer, also store the company data
+    if (userData.role === 'company' && userData.id) {
+      const employerData = {
+        id: userData.id,
+        name: userData.name || userData.companyName,
+        email: userData.email,
+        status: userData.status || 'pending',
+        rejectionReason: userData.rejectionReason || ''
+      };
+      localStorage.setItem('employerData', JSON.stringify(employerData));
+    }
   },
 
   // Clear auth data from local storage
@@ -203,6 +216,7 @@ export const authHelpers = {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userData');
     localStorage.removeItem('userType');
+    localStorage.removeItem('employerData');
   },
 
   // Check if user is authenticated

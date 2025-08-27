@@ -356,10 +356,18 @@ const fetchCompanyStatus = async () => {
       throw new Error('No authentication token found');
     }
 
-    const response = await api.get('/employer/status', {
+    // Get company ID from the employer data
+    const companyId = employer.value?.id;
+    if (!companyId) {
+      console.error('Company ID not found');
+      throw new Error('Company ID not found');
+    }
+    
+    const response = await api.get(`/company/${companyId}/status`, {
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       }
     });
 

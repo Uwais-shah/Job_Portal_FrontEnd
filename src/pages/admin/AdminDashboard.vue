@@ -1,125 +1,130 @@
 <template>
   <q-page padding>
     <div class="q-pa-md">
-      <div>
-        <div class="text-h4 text-weight-bold">Dashboard Overview</div>
-        <div class="text-subtitle1 text-grey-7">Here's the latest platform activity for {{ todaysDate }}.</div>
+      <div class="row items-center justify-between q-mb-md">
+        <div>
+          <div class="text-h4 text-weight-bold">Dashboard Overview</div>
+          <div class="text-subtitle1 text-grey-7">Here's the latest platform activity for {{ todaysDate }}.</div>
+        </div>
+        <q-btn 
+          color="primary" 
+          icon="refresh" 
+          label="Refresh" 
+          @click="fetchStats" 
+          :loading="loading" 
+          flat 
+          round
+        >
+          <q-tooltip>Refresh dashboard data</q-tooltip>
+        </q-btn>
       </div>
       <q-separator class="q-my-lg" />
 
-      <div class="row q-col-gutter-lg q-mb-lg">
-        <div class="col-12 col-sm-6 col-md-4">
+      <!-- Loading State -->
+      <div v-if="loading" class="text-center q-pa-lg">
+        <q-spinner color="primary" size="3em" />
+        <div class="q-mt-md">Loading dashboard data...</div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div v-else class="row q-col-gutter-lg q-mb-lg">
+        <!-- Total Users Card -->
+        <div class="col-12 col-sm-6 col-md-3">
           <q-card flat bordered class="stat-card">
             <q-card-section class="row items-center no-wrap">
-              <q-icon name="group" size="44px" color="blue-6" class="q-mr-md" />
+              <q-icon name="group" size="36px" color="blue-6" class="q-mr-sm" />
               <div>
-                <div class="text-subtitle1 text-grey-8">Total Users</div>
-                <div class="text-h4 text-weight-bolder">{{ stats.totalUsers || 0 }}</div>
+                <div class="text-caption text-grey-8">Total Users</div>
+                <div class="text-h5 text-weight-bolder">{{ stats.totalUsers || 0 }}</div>
               </div>
             </q-card-section>
           </q-card>
         </div>
-        <div class="col-12 col-sm-6 col-md-4">
+
+        <!-- Job Seekers Card -->
+        <div class="col-12 col-sm-6 col-md-3">
           <q-card flat bordered class="stat-card">
             <q-card-section class="row items-center no-wrap">
-              <q-icon name="fact_check" size="44px" color="green-6" class="q-mr-md" />
+              <q-icon name="work" size="36px" color="indigo-6" class="q-mr-sm" />
               <div>
-                <div class="text-subtitle1 text-grey-8">Active Jobs</div>
-                <div class="text-h4 text-weight-bolder">{{ stats.activeJobs || 0 }}</div>
+                <div class="text-caption text-grey-8">Job Seekers</div>
+                <div class="text-h5 text-weight-bolder">{{ stats.jobSeekers || 0 }}</div>
               </div>
             </q-card-section>
           </q-card>
         </div>
-        <div class="col-12 col-sm-6 col-md-4">
+
+        <!-- Companies Card -->
+        <div class="col-12 col-sm-6 col-md-3">
           <q-card flat bordered class="stat-card">
-              <q-card-section class="row items-center no-wrap">
-              <q-icon name="pending_actions" size="44px" color="orange-6" class="q-mr-md" />
+            <q-card-section class="row items-center no-wrap">
+              <q-icon name="business" size="36px" color="purple-6" class="q-mr-sm" />
               <div>
-                <div class="text-subtitle1 text-grey-8">Pending Job Posts</div>
-                <div class="text-h4 text-weight-bolder">{{ pendingJobs.length }}</div>
+                <div class="text-caption text-grey-8">Companies</div>
+                <div class="text-h5 text-weight-bolder">{{ stats.totalCompanies || 0 }}</div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Pending Approvals Card -->
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-card 
+            flat 
+            bordered 
+            class="stat-card cursor-pointer"
+            @click="pendingApprovals > 0 && $router.push('/admin/companies')"
+            :class="{'hover-card': pendingApprovals > 0}"
+          >
+            <q-card-section class="row items-center no-wrap">
+              <q-icon 
+                name="pending_actions" 
+                size="36px" 
+                :color="pendingApprovals > 0 ? 'orange-6' : 'grey-6'" 
+                class="q-mr-sm" 
+              />
+              <div>
+                <div class="text-caption text-grey-8">Pending Approvals</div>
+                <div class="text-h5 text-weight-bolder">{{ pendingApprovals || 0 }}</div>
+              </div>
+              <q-icon 
+                v-if="pendingApprovals > 0" 
+                name="chevron_right" 
+                color="grey-6" 
+                size="20px"
+                class="q-ml-xs"
+              />
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Active Job Listings -->
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-card flat bordered class="stat-card">
+            <q-card-section class="row items-center no-wrap">
+              <q-icon name="assignment" size="36px" color="green-6" class="q-mr-sm" />
+              <div>
+                <div class="text-caption text-grey-8">Active Job Listings</div>
+                <div class="text-h5 text-weight-bolder">{{ stats.activeJobListings || 0 }}</div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Rejected Companies -->
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-card flat bordered class="stat-card">
+            <q-card-section class="row items-center no-wrap">
+              <q-icon name="block" size="36px" color="red-6" class="q-mr-sm" />
+              <div>
+                <div class="text-caption text-grey-8">Rejected Companies</div>
+                <div class="text-h5 text-weight-bolder">{{ stats.totalRejectedCompanies || 0 }}</div>
               </div>
             </q-card-section>
           </q-card>
         </div>
       </div>
 
-      <q-card flat bordered class="q-mt-xl">
-        <q-card-section>
-            <div class="row items-center q-mb-md">
-            <div class="text-h5">Pending Job Approvals</div>
-            <q-space />
-            <q-btn
-              flat
-              round
-              color="primary"
-              icon="refresh"
-              @click="fetchPendingJobs"
-              :loading="loadingPendingJobs"
-            >
-              <q-tooltip>Refresh</q-tooltip>
-            </q-btn>
-          </div>
-        </q-card-section>
-        <q-separator />
-
-        <q-card-section>
-          <q-inner-loading :showing="loadingPendingJobs">
-            <q-spinner-gears size="50px" color="primary" />
-          </q-inner-loading>
-
-          <div v-if="!loadingPendingJobs && pendingJobs.length === 0">
-            <q-banner rounded class="bg-green-1 text-green-8">
-              <template v-slot:avatar>
-                <q-icon name="check_circle" color="green-5" />
-              </template>
-              No pending jobs for approval. All caught up! 👍
-            </q-banner>
-          </div>
-
-          <div v-else class="q-gutter-y-md">
-            <q-list separator>
-              <q-expansion-item
-                v-for="job in pendingJobs"
-                :key="job.id"
-                class="job-expansion-card"
-                group="pending-jobs"
-                icon="work_outline"
-                :label="job.title"
-                :caption="`from ${job.employer?.name || 'N/A'}`"
-              >
-                <q-card>
-                  <q-card-section class="q-pt-none">
-                      <div class="q-py-md text-body2 text-grey-8" v-html="job.description || 'No description provided.'"></div>
-                      <q-separator spaced />
-                      <div class="text-caption text-grey-7 q-mt-sm">
-                        <q-icon name="schedule" size="14px" class="q-mr-xs" />
-                        Submitted: {{ formatDate(job.submitted_at) }}
-                      </div>
-                      <div class="row q-mt-md q-gutter-sm justify-end">
-                      <q-btn
-                        unelevated
-                        color="negative"
-                        label="Reject"
-                        icon="close"
-                        @click="showRejectDialog(job)"
-                        :loading="rejectingJobId === job.id"
-                      />
-                      <q-btn
-                        unelevated
-                        color="positive"
-                        label="Approve"
-                        icon="check"
-                        @click="approveJob(job.id)"
-                        :loading="approvingJobId === job.id"
-                      />
-                      </div>
-                  </q-card-section>
-                </q-card>
-              </q-expansion-item>
-            </q-list>
-          </div>
-        </q-card-section>
-      </q-card>
     </div>
 
     <q-dialog v-model="rejectDialog.show" persistent>
@@ -172,9 +177,9 @@ export default {
 
     const stats = ref({
       totalUsers: 0,
-      activeJobs: 0,
+      jobSeekers: 0,
       totalCompanies: 0,
-      unverifiedCompanies: 0
+      pendingApprovals: 0
     });
 
     const loading = ref(true);
@@ -185,6 +190,11 @@ export default {
     const pendingApprovals = ref(0);
 
     const todaysDate = ref(date.formatDate(Date.now(), 'MMMM D, YYYY'));
+    
+    // Fetch dashboard data when component is mounted
+    onMounted(() => {
+      fetchStats();
+    });
 
     const rejectDialog = ref({
       show: false,
@@ -205,19 +215,29 @@ export default {
         ]);
 
         if (statsResult.success) {
-          stats.value = statsResult.data;
+          // Update stats with the response data
+          stats.value = {
+            ...stats.value,
+            ...statsResult.data
+          };
+          
+          // Update pending approvals from the stats
+          if (typeof statsResult.data.pendingApprovals !== 'undefined') {
+            pendingApprovals.value = statsResult.data.pendingApprovals;
+          }
         } else {
           throw new Error(statsResult.error || 'Failed to load dashboard stats');
         }
 
+        // Still fetch unverified companies to keep the existing functionality
         if (companiesResult.success) {
           pendingApprovals.value = companiesResult.data.length;
-          stats.value.unverifiedCompanies = companiesResult.data.length;
         }
       } catch (error) {
+        console.error('Error in fetchStats:', error);
         $q.notify({
           type: 'negative',
-          message: error.message,
+          message: error.message || 'Failed to load dashboard data',
           position: 'top'
         });
       } finally {
@@ -343,6 +363,29 @@ export default {
 </script>
 
 <style scoped>
+/* Hover effect for clickable cards */
+.hover-card {
+  transition: all 0.2s ease-in-out;
+  border-left: 4px solid transparent;
+}
+
+.hover-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #ff9800;
+  cursor: pointer;
+}
+
+.stat-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-card .q-card__section {
+  flex: 1;
+}
+
 .admin-active-link {
   background-color: #e3f2fd; /* A light blue */
   color: #1976d2; /* Primary color */

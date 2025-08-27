@@ -1,8 +1,8 @@
-import api from './auth.service'; 
+import api from './auth.service';
 
 export default {
   async getJobById(id) {
-    const response = await api.get(`jobs/jobs/${id}`)
-    return response.data.job
+    const response = await api.get(`jobs/${id}`)
+    return response.data.job || response.data
   }
 }

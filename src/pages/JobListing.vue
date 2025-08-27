@@ -230,7 +230,7 @@
                 <q-icon name="touch_app" size="64px" class="q-mb-md" />
                 <div class="text-h6">Select a job to see the details</div>
               </div>
-           </div>
+          </div>
         </div>
       </div>
     </q-page>
@@ -239,13 +239,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-
-import suggestService from '../services/suggest.service';
-import searchService from '../services/search.service';
-import jobService from '../services/job.service.js';
-import api from '../services/auth.service'; // Fixed: single import of API service
+import { useRoute, useRouter } from 'vue-router';
 import { authHelpers } from '../services/auth.service';
+import api from '../services/auth.service';
+import searchService from '../services/search.service';
+import suggestService from '../services/suggest.service';
 
 import JobDetailContent from './JobDetailContent.vue';
 
@@ -320,7 +318,7 @@ const filters = ref({
   experienceLevel: [],
   companySize: null,
   postedDate: null,
-  location: '' 
+  location: ''
 });
 
 const availableSkills = ref([]);
@@ -391,12 +389,12 @@ const fetchJobs = async () => {
     if (searchTerm.value && searchTerm.value.length > 0) {
       const result = await searchService.searchJobs(searchTerm.value);
       rawJobs = result?.success && Array.isArray(result.data?.jobs) ? result.data.jobs : [];
-    } 
+    }
     // 2️⃣ Suggested jobs for logged-in users
     else if (isLoggedIn) {
       const result = await suggestService.getSuggestions(currentUser.id);
       rawJobs = result?.success && Array.isArray(result.data) ? result.data : [];
-    } 
+    }
 
     // 3️⃣ Location filter
     const locationFilter = locationTerm.value || (currentUser?.location?.toLowerCase() ?? '');
@@ -585,19 +583,12 @@ onMounted(() => {
   fetchJobs();
 });
 
-async function selectJob(job) {
-  if (!job || selectedJobId.value === job.id) return;
-  selectedJobId.value = job.id;
-  loadingDetail.value = true;
-  try {
-    const res = await jobService.getJobById(job.id);
-    selectedJob.value = res?.data ?? res;
-  } catch (err) {
-    console.error('Failed to load job details', err);
-    selectedJob.value = null;
-  } finally {
-    loadingDetail.value = false;
-  }
+const router = useRouter();
+
+function selectJob(job) {
+  if (!job) return;
+  // Navigate to the job details page
+  router.push({ name: 'JobDescription', params: { id: job.id } });
 }
 </script>
 
@@ -758,7 +749,7 @@ a:hover {
   }
   .job-detail-pane {
     position: static;
-    height: auto;    
+    height: auto;
   }
 }
 </style>

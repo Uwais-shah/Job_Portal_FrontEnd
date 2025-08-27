@@ -59,9 +59,9 @@
       <q-icon name="error_outline" size="80px" color="red-5" class="q-mb-lg" />
       <div class="text-h6 text-red-8 text-weight-medium">Failed to Load Notifications</div>
       <div class="text-body2 text-grey-6 q-mb-lg">{{ errorMessage }}</div>
-      <q-btn 
-        color="primary" 
-        @click="refreshNotifications" 
+      <q-btn
+        color="primary"
+        @click="refreshNotifications"
         :loading="loading"
         label="Try Again"
         class="q-mt-md"
@@ -130,7 +130,7 @@
                 />
               </div>
             </q-item-section>
-            
+
             <q-item-section>
               <q-item-label class="notification-message text-weight-medium">
                 {{ notification.message }}
@@ -149,7 +149,7 @@
                 />
               </div>
             </q-item-section>
-            
+
             <q-item-section side class="notification-actions">
               <div class="column q-gutter-xs">
                 <q-btn

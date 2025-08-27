@@ -60,28 +60,75 @@ const adminService = {
   // Admin login
   login: async (credentials) => {
     try {
+      console.log('Sending login request with:', { email: credentials.email });
+      
       const response = await api.post('/admin/login', {
-        email: credentials.email,
+        email: credentials.email.trim(),
         password: credentials.password
+      }, {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
       });
 
-      // Ensure the token has the Bearer prefix when storing
-      if (response.data && response.data.token) {
-        // Remove any existing Bearer prefix and add a new one
-        const token = response.data.token.replace(/^Bearer\s+/i, '');
-        localStorage.setItem('adminToken', `Bearer ${token}`);
-        response.data.token = `Bearer ${token}`;
-      }
+      console.log('Login response:', response.data);
 
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      console.error('Admin login error:', error);
+      if (response.data && response.data.token) {
+        // Ensure token has Bearer prefix
+        const token = response.data.token.startsWith('Bearer ')
+          ? response.data.token
+          : `Bearer ${response.data.token}`;
+        
+        // Store token in localStorage
+        localStorage.setItem('adminToken', token);
+        
+        // Set default auth header for future requests
+        api.defaults.headers.common['Authorization'] = token;
+        
+        return {
+          success: true,
+          data: response.data,
+          token: token,
+          admin: response.data.admin,
+          redirectTo: response.data.redirectTo || '/admin/dashboard'
+        };
+      }
+      
       return {
         success: false,
-        error: error.response?.data?.message || 'Admin login failed'
+        error: response.data?.message || 'Login failed. Please check your credentials.'
+      };
+      
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      // Handle specific error cases
+      let errorMessage = 'An error occurred during login. Please try again.';
+      
+      if (error.response) {
+        // Server responded with error status code
+        errorMessage = error.response.data?.message || errorMessage;
+        
+        if (error.response.status === 401) {
+          errorMessage = 'Invalid email or password';
+        } else if (error.response.status === 429) {
+          errorMessage = 'Too many login attempts. Please try again later.';
+        } else if (error.response.status >= 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+      }
+      
+      // Clear any existing token on error
+      localStorage.removeItem('adminToken');
+      
+      return {
+        success: false,
+        error: errorMessage
       };
     }
   },
@@ -89,20 +136,25 @@ const adminService = {
   // Get admin dashboard data
   getDashboardStats: async () => {
     try {
-      const response = await api.get('/admin/dashboard');
-      return {
-        success: true,
-        data: response.data
-      };
+      const response = await api.get('/admin/stats');
+      if (response.data.success) {
+        return {
+          success: true,
+          data: response.data.data
+        };
+      } else {
+        throw new Error(response.data.message || 'Failed to load dashboard stats');
+      }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
       return {
         success: false,
-        error: error.response?.data?.message || 'Failed to load dashboard stats',
+        error: error.response?.data?.message || error.message || 'Failed to load dashboard stats',
         data: {
           totalUsers: 0,
-          activeJobs: 0,
-          totalCompanies: 0
+          jobSeekers: 0,
+          totalCompanies: 0,
+          pendingApprovals: 0
         }
       };
     }
@@ -264,9 +316,47 @@ const adminService = {
     }
   },
 
+  // Suspend a company
+  suspendCompany: async (companyId, reason) => {
+    try {
+      const response = await api.post(`/admin/companies/${companyId}/suspend`, { reason });
+      return {
+        success: true,
+        data: response.data,
+        message: 'Company suspended successfully'
+      };
+    } catch (error) {
+      console.error('Error suspending company:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to suspend company',
+        status: error.response?.status
+      };
+    }
+  },
+
   // Keep verifyCompany for backward compatibility
   verifyCompany: async (companyId) => {
     return adminService.approveCompany(companyId);
+  },
+
+  // Ban a company permanently
+  banCompany: async (companyId, reason) => {
+    try {
+      const response = await api.post(`/admin/companies/${companyId}/ban`, { reason });
+      return {
+        success: true,
+        data: response.data,
+        message: 'Company banned successfully'
+      };
+    } catch (error) {
+      console.error('Error banning company:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to ban company',
+        status: error.response?.status
+      };
+    }
   },
 
   // Get available admins
