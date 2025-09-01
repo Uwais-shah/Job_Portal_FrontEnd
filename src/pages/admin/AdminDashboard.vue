@@ -6,13 +6,13 @@
           <div class="text-h4 text-weight-bold">Dashboard Overview</div>
           <div class="text-subtitle1 text-grey-7">Here's the latest platform activity for {{ todaysDate }}.</div>
         </div>
-        <q-btn 
-          color="primary" 
-          icon="refresh" 
-          label="Refresh" 
-          @click="fetchStats" 
-          :loading="loading" 
-          flat 
+        <q-btn
+          color="primary"
+          icon="refresh"
+          label="Refresh"
+          @click="fetchStats"
+          :loading="loading"
+          flat
           round
         >
           <q-tooltip>Refresh dashboard data</q-tooltip>
@@ -69,28 +69,28 @@
 
         <!-- Pending Approvals Card -->
         <div class="col-12 col-sm-6 col-md-3">
-          <q-card 
-            flat 
-            bordered 
+          <q-card
+            flat
+            bordered
             class="stat-card cursor-pointer"
             @click="pendingApprovals > 0 && $router.push('/admin/companies')"
             :class="{'hover-card': pendingApprovals > 0}"
           >
             <q-card-section class="row items-center no-wrap">
-              <q-icon 
-                name="pending_actions" 
-                size="36px" 
-                :color="pendingApprovals > 0 ? 'orange-6' : 'grey-6'" 
-                class="q-mr-sm" 
+              <q-icon
+                name="pending_actions"
+                size="36px"
+                :color="pendingApprovals > 0 ? 'orange-6' : 'grey-6'"
+                class="q-mr-sm"
               />
               <div>
                 <div class="text-caption text-grey-8">Pending Approvals</div>
                 <div class="text-h5 text-weight-bolder">{{ pendingApprovals || 0 }}</div>
               </div>
-              <q-icon 
-                v-if="pendingApprovals > 0" 
-                name="chevron_right" 
-                color="grey-6" 
+              <q-icon
+                v-if="pendingApprovals > 0"
+                name="chevron_right"
+                color="grey-6"
                 size="20px"
                 class="q-ml-xs"
               />
@@ -105,7 +105,7 @@
               <q-icon name="assignment" size="36px" color="green-6" class="q-mr-sm" />
               <div>
                 <div class="text-caption text-grey-8">Active Job Listings</div>
-                <div class="text-h5 text-weight-bolder">{{ stats.activeJobListings || 0 }}</div>
+                <div class="text-h5 text-weight-bolder">{{ stats.activeJobs || 0 }}</div>
               </div>
             </q-card-section>
           </q-card>
@@ -164,8 +164,7 @@
 <script>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { date } from 'quasar';
-import { useQuasar } from 'quasar';
+import { useQuasar, date } from 'quasar';
 import adminService from 'src/services/admin.service';
 
 export default {
@@ -176,6 +175,7 @@ export default {
     const router = useRouter();
 
     const stats = ref({
+      activeJobs: 0,
       totalUsers: 0,
       jobSeekers: 0,
       totalCompanies: 0,
@@ -183,17 +183,16 @@ export default {
     });
 
     const loading = ref(true);
-    const loadingPendingJobs = ref(false);
-    const pendingJobs = ref([]);
     const approvingJobId = ref(null);
     const rejectingJobId = ref(null);
     const pendingApprovals = ref(0);
 
     const todaysDate = ref(date.formatDate(Date.now(), 'MMMM D, YYYY'));
-    
+
     // Fetch dashboard data when component is mounted
-    onMounted(() => {
-      fetchStats();
+    onMounted(async () => {
+      checkAuth();
+      await fetchStats();
     });
 
     const rejectDialog = ref({
@@ -220,7 +219,7 @@ export default {
             ...stats.value,
             ...statsResult.data
           };
-          
+
           // Update pending approvals from the stats
           if (typeof statsResult.data.pendingApprovals !== 'undefined') {
             pendingApprovals.value = statsResult.data.pendingApprovals;
@@ -245,26 +244,6 @@ export default {
       }
     };
 
-    const fetchPendingJobs = async () => {
-      loadingPendingJobs.value = true;
-      try {
-        const result = await adminService.getPendingJobs();
-        if (result.success) {
-          pendingJobs.value = result.data;
-        } else {
-          throw new Error(result.error || 'Failed to fetch pending jobs');
-        }
-      } catch (error) {
-        $q.notify({
-          type: 'negative',
-          message: error.message,
-          position: 'top'
-        });
-      } finally {
-        loadingPendingJobs.value = false;
-      }
-    };
-
     const approveJob = async (jobId) => {
       approvingJobId.value = jobId;
       try {
@@ -275,7 +254,7 @@ export default {
             message: 'Job approved successfully',
             position: 'top'
           });
-          await Promise.all([fetchPendingJobs(), fetchStats()]);
+          await fetchStats();
         } else {
           throw new Error(result.error || 'Failed to approve job');
         }
@@ -315,7 +294,7 @@ export default {
             position: 'top'
           });
           rejectDialog.value.show = false;
-          await Promise.all([fetchPendingJobs(), fetchStats()]);
+          await fetchStats();
         } else {
           throw new Error(result.error || 'Failed to reject job');
         }
@@ -337,26 +316,20 @@ export default {
       }
     };
 
-    onMounted(async () => {
-      checkAuth();
-      await Promise.all([fetchStats(), fetchPendingJobs()]);
-    });
-
     return {
       stats,
       loading,
-      loadingPendingJobs,
-      pendingJobs,
       approvingJobId,
       rejectingJobId,
       rejectDialog,
       pendingApprovals,
       todaysDate,
       formatDate,
-      fetchPendingJobs,
       approveJob,
       showRejectDialog,
       rejectJob,
+      checkAuth,
+      fetchStats,
     };
   }
 };

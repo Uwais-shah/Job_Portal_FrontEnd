@@ -3,211 +3,545 @@
     <div class="q-pa-md">
       <div class="row items-center q-mb-md">
         <div class="col">
-            <div class="row items-center q-mb-sm">
+          <div class="row items-center q-mb-sm">
             <q-btn flat round icon="arrow_back" class="q-mr-sm" @click="$router.push('/admin/dashboard')" />
-            <div class="text-h4 text-weight-bold">Job Seeker Management</div>
+            <div class="text-h4 text-weight-bold">Reports Management</div>
           </div>
-            <div class="text-subtitle1 text-grey-7 q-pl-xl">Search, filter, and manage all job seeker accounts.</div>
+          <div class="text-subtitle1 text-grey-7 q-pl-xl">Manage reported companies and job seekers.</div>
         </div>
       </div>
       <q-separator class="q-my-lg" />
 
-      <q-card flat bordered class="q-mb-lg">
-        <q-card-section class="row q-gutter-md items-center">
-          <q-input
-            v-model="searchQuery"
-            outlined
-            dense
-            placeholder="Search by name or email..."
-            class="col-12 col-md-8"
-          >
-            <template v-slot:append>
-              <q-icon name="search" />
-            </template>
-          </q-input>
-          <q-select
-            v-model="statusFilter"
-            :options="statusOptions"
-            label="Filter by Status"
-            outlined
-            dense
-            class="col-12 col-md-3"
-            emit-value
-            map-options
-          />
-        </q-card-section>
-      </q-card>
+      <!-- Tabs -->
+      <q-tabs
+        v-model="activeTab"
+        dense
+        class="text-grey-7"
+        active-color="primary"
+        indicator-color="primary"
+        align="left"
+        narrow-indicator
+      >
+        <q-tab name="reportedCompanies" icon="business" label="Reported Companies" />
+        <q-tab name="reportedJobSeekers" icon="report_problem" label="Reported Job Seekers" />
+      </q-tabs>
 
-      <div v-if="loading" class="row q-col-gutter-lg">
-          <div v-for="n in 6" :key="n" class="col-12 col-md-6 col-lg-4">
-            <q-card flat bordered><q-skeleton height="250px" square /></q-card>
+      <q-separator />
+
+      <q-tab-panels v-model="activeTab" animated>
+        <!-- Reported Companies Tab -->
+        <q-tab-panel name="reportedCompanies">
+          <div v-if="loadingReportedCompanies" class="row q-col-gutter-lg">
+            <div v-for="n in 3" :key="n" class="col-12">
+              <q-skeleton type="rect" height="100px" />
+            </div>
           </div>
-      </div>
-      <div v-else-if="filteredUsers.length > 0" class="row q-col-gutter-lg">
-        <div v-for="user in filteredUsers" :key="user.id" class="col-12 col-md-6 col-lg-4">
-          <q-card flat bordered class="user-card">
-            <q-card-section>
-                <q-badge
-                :color="user.status === 'Active' ? 'green' : 'red'"
-                :label="user.status"
-                floating
-              />
-              <div class="row items-center no-wrap">
-                <q-avatar size="56px" color="primary" text-color="white" class="q-mr-md">
-                  {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
-                </q-avatar>
-                <div>
-                  <div class="text-h6 ellipsis">
-                    {{ user.firstName }} {{ user.lastName }}
+          <div v-else-if="reportedCompanies.length > 0" class="row q-col-gutter-lg">
+            <div v-for="company in reportedCompanies" :key="company.id" class="col-12">
+              <q-card flat bordered class="reported-company-card">
+                <q-card-section class="row items-center">
+                  <div class="col-12 col-md-8">
+                    <div class="text-h6">{{ company.companyName || 'Unnamed Company' }}</div>
+                    <div class="text-subtitle1 text-grey-7">{{ company.email }}</div>
+                    <div v-if="company.contactNumber" class="text-subtitle2 text-grey-7">{{ company.contactNumber }}</div>
+                    <div class="text-caption q-mt-sm">
+                      <q-icon name="report" color="negative" size="sm" />
+                      Reported {{ company.reportCount }} {{ company.reportCount === 1 ? 'time' : 'times' }}
+                      <span class="q-mx-sm">•</span>
+                      <q-icon name="schedule" color="grey-6" size="sm" />
+                      Last reported {{ formatRelativeDate(company.lastReportAt) }}
+                    </div>
                   </div>
-                  <div class="text-subtitle2 text-grey-7 ellipsis">{{ user.email }}</div>
-                </div>
-              </div>
-            </q-card-section>
-            <q-separator />
+                  <div class="col-12 col-md-4 text-right q-mt-md q-mt-md-none">
+                    <q-btn
+                      color="negative"
+                      icon="pause"
+                      label="Suspend Company"
+                      @click="confirmSuspend(company)"
+                      class="full-width q-mb-sm"
+                    />
+                    <q-btn
+                      color="primary"
+                      icon="visibility"
+                      label="View Details"
+                      @click="viewCompanyDetails(company)"
+                      class="full-width"
+                      outline
+                    />
+                    <q-btn
+                      color="negative"
+                      icon="block"
+                      label="Ban Company"
+                      @click="confirmBan(company)"
+                      class="full-width q-mt-sm"
+                    />
+                  </div>
+                </q-card-section>
+              </q-card>
+            </div>
+          </div>
+          <div v-else class="text-center q-pa-xl">
+            <q-icon name="check_circle" color="positive" size="64px" class="q-mb-md" />
+            <div class="text-h6">No Reported Companies</div>
+            <div class="text-grey-7">There are no reported companies at this time.</div>
+          </div>
+        </q-tab-panel>
 
-            <q-card-section>
-                <q-list dense separator>
-                  <q-item>
-                    <q-item-section avatar><q-icon name="phone" color="grey-7" size="xs"/></q-item-section>
-                    <q-item-section>{{ user.phone || 'Not provided' }}</q-item-section>
-                  </q-item>
-                    <q-item>
-                    <q-item-section avatar><q-icon name="event" color="grey-7" size="xs"/></q-item-section>
-                    <q-item-section>Joined on {{ formatDate(user.registered) }}</q-item-section>
-                  </q-item>
-                </q-list>
-            </q-card-section>
-            <q-separator />
-
-            <q-card-actions align="around">
-                <q-btn flat dense color="primary" label="View Details" icon="visibility" @click="viewUser(user)" />
-                <q-btn
-                v-if="user.status === 'Active'"
-                flat
-                dense
-                color="orange"
-                label="Suspend"
-                icon="pause"
-                @click="suspendUser(user)"
-              />
-                <q-btn v-else flat dense color="positive" label="Activate" icon="play_arrow" @click="activateUser(user)" />
-                <q-btn flat dense color="negative" label="Delete" icon="delete" @click="deleteUser(user)" />
-            </q-card-actions>
-          </q-card>
-        </div>
-      </div>
-
-        <div v-else class="text-center q-pa-xl">
-        <q-icon name="search_off" color="grey-5" size="64px" class="q-mb-md" />
-        <div class="text-h6">No Job Seekers Found</div>
-        <div class="text-grey-7">No users match your current search and filter criteria.</div>
-      </div>
+        <!-- Reported Job Seekers Tab -->
+        <q-tab-panel name="reportedJobSeekers">
+          <div v-if="loadingReportedJobSeekers" class="row q-col-gutter-lg">
+            <div v-for="n in 3" :key="n" class="col-12">
+              <q-skeleton type="rect" height="100px" />
+            </div>
+          </div>
+          <div v-else-if="reportedJobSeekers.length > 0" class="row q-col-gutter-lg">
+            <div v-for="user in reportedJobSeekers" :key="user.id" class="col-12">
+              <q-card flat bordered class="reported-user-card">
+                <q-card-section class="row items-center">
+                  <div class="col-12 col-md-8">
+                    <div class="text-h6">{{ user.name }}</div>
+                    <div class="text-subtitle1 text-grey-7">{{ user.email }}</div>
+                    <div class="text-caption q-mt-sm">
+                      <q-icon name="report" color="negative" size="sm" />
+                      Reported {{ user.reportCount }} {{ user.reportCount === 1 ? 'time' : 'times' }}
+                      <span class="q-mx-sm">•</span>
+                      <q-icon name="schedule" color="grey-6" size="sm" />
+                      Last reported {{ formatRelativeDate(user.lastReportAt) }}
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-4 text-right q-mt-md q-mt-md-none">
+                    <q-btn
+                      color="negative"
+                      icon="pause"
+                      label="Suspend Account"
+                      @click="suspendReportedUser(user)"
+                      class="full-width"
+                    />
+                  </div>
+                </q-card-section>
+              </q-card>
+            </div>
+          </div>
+          <div v-else class="text-center q-pa-xl">
+            <q-icon name="check_circle" color="positive" size="64px" class="q-mb-md" />
+            <div class="text-h6">No Reported Job Seekers</div>
+            <div class="text-grey-7">There are no reported job seekers at this time.</div>
+          </div>
+        </q-tab-panel>
+      </q-tab-panels>
     </div>
   </q-page>
+
+  <!-- Ban Company Dialog -->
+  <q-dialog v-model="showBanDialog" persistent>
+    <q-card style="min-width: 400px; border-radius: 12px;">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Ban Company</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
+      </q-card-section>
+      <q-card-section>
+        <p>Provide a reason for banning <span class="text-weight-bold">{{ currentCompany?.companyName || 'this company' }}</span>. This will permanently deactivate their account.</p>
+        <q-input
+          v-model="banReason"
+          label="Reason for ban"
+          type="textarea"
+          outlined
+          autofocus
+          :rules="[val => !!val || 'A reason is required to ban a company.']"
+        />
+      </q-card-section>
+      <q-card-actions align="right" class="q-pa-md bg-grey-1">
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
+        <q-btn
+          unelevated
+          label="Ban Company"
+          color="negative"
+          @click="banCompany"
+          :disable="!banReason || !currentCompany"
+          :loading="banningId === (currentCompany?.id)"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <!-- Suspend Company Dialog -->
+  <q-dialog v-model="showSuspendDialog" persistent>
+    <q-card style="min-width: 400px; border-radius: 12px;">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">{{ currentCompany?.status === 'suspended' ? 'Reinstate' : 'Suspend' }} Company</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
+      </q-card-section>
+      <q-card-section>
+        <p v-if="currentCompany?.status === 'suspended'">
+          Are you sure you want to reinstate <span class="text-weight-bold">{{ currentCompany?.companyName }}</span>?
+          They will regain full access to their account.
+        </p>
+        <template v-else>
+          <p>Provide a reason for suspending <span class="text-weight-bold">{{ currentCompany?.companyName }}</span>.</p>
+          <q-input
+            v-model="suspendReason"
+            type="textarea"
+            outlined
+            label="Suspension Reason"
+            :rules="[val => !!val || 'Please provide a reason']"
+            class="q-mt-md"
+            autogrow
+            hint="The company will be moved to suspended status."
+          />
+        </template>
+      </q-card-section>
+      <q-card-actions align="right" class="q-px-md q-pb-md">
+        <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+        <q-btn
+          :label="currentCompany?.status === 'suspended' ? 'Reinstate' : 'Suspend'"
+          :color="currentCompany?.status === 'suspended' ? 'positive' : 'warning'"
+          :loading="suspendingId === currentCompany?.id"
+          :disable="!suspendReason && currentCompany?.status !== 'suspended'"
+          @click="suspendCompany"
+          unelevated
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { useQuasar, date } from 'quasar';
-import ViewUserDetailsDialog from 'src/components/admin/ViewUserDetailsDialog.vue'; // We will create this component next
+import { ref, onMounted, watch } from 'vue';
+import { useQuasar } from 'quasar';
+import { api } from 'src/boot/axios';
 
 const $q = useQuasar();
-const loading = ref(true);
+const activeTab = ref('reportedCompanies');
+const loadingReportedCompanies = ref(false);
+const loadingReportedJobSeekers = ref(false);
+const reportedCompanies = ref([]);
+const reportedJobSeekers = ref([]);
 
-// --- Filter Data ---
-const searchQuery = ref('');
-const statusFilter = ref('all');
-const allUsers = ref([]);
+// Format date as relative time (e.g., "2 days ago")
+const formatRelativeDate = (dateString) => {
+  if (!dateString) return 'N/A';
 
-const statusOptions = [
-  { label: 'All Statuses', value: 'all' },
-  { label: 'Active', value: 'Active' },
-  { label: 'Suspended', value: 'Suspended' }
-];
+  const now = new Date();
+  const reportDate = new Date(dateString);
+  const diffInSeconds = Math.floor((now - reportDate) / 1000);
 
-// --- Filtering Logic ---
-const filteredUsers = computed(() => {
-  return allUsers.value.filter(user => {
-    const searchLower = searchQuery.value.toLowerCase();
-    const searchMatch = user.firstName.toLowerCase().includes(searchLower) ||
-                        user.lastName.toLowerCase().includes(searchLower) ||
-                        user.email.toLowerCase().includes(searchLower);
-    const statusMatch = statusFilter.value === 'all' || user.status === statusFilter.value;
-    return searchMatch && statusMatch;
-  });
-});
+  // Convert to minutes, hours, days, etc.
+  const minutes = Math.floor(diffInSeconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
 
-// --- API and Actions ---
-const fetchUsers = async () => {
-  loading.value = true;
-  // This would be an API call, e.g., await adminService.getJobSeekers()
-  setTimeout(() => {
-    allUsers.value = [
-      { id: 1, firstName: 'Aarav', lastName: 'Sharma', email: 'aarav.sharma@example.com', phone: '(123) 456 - 7890', status: 'Active', registered: '2025-08-10T10:00:00Z', applications: [ { jobTitle: 'Frontend Developer', companyName: 'Innovate Inc.' }, { jobTitle: 'UI/UX Designer', companyName: 'Creative Solutions' } ] },
-      { id: 3, firstName: 'Priya', lastName: 'Patel', email: 'priya.p@example.com', phone: '(345) 678 - 9012', status: 'Suspended', registered: '2025-08-08T14:00:00Z', applications: [] },
-      { id: 5, firstName: 'Rohan', lastName: 'Mehta', email: 'rohan.mehta@example.com', phone: '(567) 890 - 1234', status: 'Active', registered: '2025-08-06T16:45:00Z', applications: [ { jobTitle: 'Backend Engineer', companyName: 'Tech Solutions Ltd.' } ] },
-      { id: 6, firstName: 'Sneha', lastName: 'Verma', email: 'sneha.v@example.com', phone: '(678) 901-2345', status: 'Active', registered: '2025-07-22T11:00:00Z', applications: [] },
-      { id: 7, firstName: 'Vikram', lastName: 'Singh', email: 'vikram.s@example.com', phone: '(789) 012-3456', status: 'Suspended', registered: '2025-07-19T09:20:00Z', applications: [ { jobTitle: 'DevOps Engineer', companyName: 'Innovate Inc.' } ] },
-    ];
-    loading.value = false;
-  }, 1000);
+  if (years > 0) return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+  if (months > 0) return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+  if (days > 0) return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  if (hours > 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  if (minutes > 0) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+
+  return 'just now';
 };
 
-const formatDate = (dateString) => date.formatDate(dateString, 'MMM D, YYYY');
+// Fetch reported companies
+const fetchReportedCompanies = async () => {
+  loadingReportedCompanies.value = true;
+  try {
+    const response = await api.get('/admin/companies/reports');
+    reportedCompanies.value = response.data.data || [];
+  } catch (error) {
+    console.error('Error fetching reported companies:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to load reported companies. Please try again.'
+    });
+  } finally {
+    loadingReportedCompanies.value = false;
+  }
+};
 
-const viewUser = (user) => {
+// Fetch reported job seekers
+const fetchReportedJobSeekers = async () => {
+  loadingReportedJobSeekers.value = true;
+  try {
+    const response = await api.get('/admin/job_seekers/reports');
+    reportedJobSeekers.value = response.data.data || [];
+  } catch (error) {
+    console.error('Error fetching reported job seekers:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to load reported job seekers. Please try again.'
+    });
+  } finally {
+    loadingReportedJobSeekers.value = false;
+  }
+};
+
+// Watch for tab changes
+watch(activeTab, (newTab) => {
+  if (newTab === 'reportedCompanies' && reportedCompanies.value.length === 0) {
+    fetchReportedCompanies();
+  } else if (newTab === 'reportedJobSeekers' && reportedJobSeekers.value.length === 0) {
+    fetchReportedJobSeekers();
+  }
+});
+
+// Dialog states
+const showBanDialog = ref(false);
+const showSuspendDialog = ref(false);
+const currentCompany = ref(null);
+const banReason = ref('');
+const suspendReason = ref('');
+const banningId = ref(null);
+const suspendingId = ref(null);
+
+// View company details
+const viewCompanyDetails = (company) => {
+  currentCompany.value = company;
   $q.dialog({
-    component: ViewUserDetailsDialog,
-    componentProps: {
-      user: user
+    title: 'Company Details',
+    message: `
+      <div class="q-gutter-y-sm">
+        <div><strong>Company Name:</strong> ${company.companyName || 'N/A'}</div>
+        <div><strong>Email:</strong> ${company.email || 'N/A'}</div>
+        <div><strong>Contact:</strong> ${company.contactNumber || 'N/A'}</div>
+        <div><strong>Status:</strong>
+          <q-badge :color="company.status === 'suspended' ? 'warning' : company.status === 'banned' ? 'negative' : 'positive'" class="q-ml-sm">
+            ${company.status === 'suspended' ? 'Suspended' : company.status === 'banned' ? 'Banned' : 'Active'}
+          </q-badge>
+        </div>
+        <div><strong>Report Count:</strong> ${company.reportCount || 0}</div>
+        <div><strong>Last Reported:</strong> ${formatRelativeDate(company.lastReportAt)}</div>
+        ${
+          company.suspensionReason
+            ? `<div class="q-mt-sm"><strong>Suspension Reason:</strong><div class="text-caption q-mt-xs bg-warning-1 q-pa-sm rounded-borders">${company.suspensionReason}</div></div>`
+            : ''
+        }
+        ${
+          company.banReason
+            ? `<div class="q-mt-sm"><strong>Ban Reason:</strong><div class="text-caption q-mt-xs bg-negative-1 q-pa-sm rounded-borders">${company.banReason}</div></div>`
+            : ''
+        }
+      </div>
+    `,
+    html: true,
+    persistent: true,
+    ok: {
+      label: 'Close',
+      color: 'primary'
+    },
+    style: 'min-width: 400px;'
+  });
+};
+
+// Confirm suspend company
+const confirmSuspend = (company) => {
+  currentCompany.value = company;
+  suspendReason.value = company.suspensionReason || '';
+  showSuspendDialog.value = true;
+};
+
+// Suspend company
+const suspendCompany = async () => {
+  const company = currentCompany.value;
+  if (!company) return;
+
+  const companyId = company.id;
+  if (!companyId) {
+    $q.notify({ type: 'negative', message: 'Invalid company ID' });
+    return;
+  }
+
+  suspendingId.value = companyId;
+  const isReinstating = company.status === 'suspended';
+
+  try {
+    let result;
+    const endpoint = isReinstating
+      ? `/admin/companies/${companyId}/reinstate`
+      : `/admin/companies/${companyId}/suspend`;
+
+    const data = isReinstating ? {} : { reason: suspendReason.value };
+
+    const response = await api({
+      method: isReinstating ? 'PUT' : 'POST',
+      url: endpoint,
+      data
+    });
+
+    result = response.data;
+
+    if (result.success) {
+      $q.notify({
+        type: 'positive',
+        message: isReinstating
+          ? `${company.companyName} has been reinstated.`
+          : `${company.companyName} has been suspended.`
+      });
+
+      // Update the company in the list
+      const index = reportedCompanies.value.findIndex(c => c.id === companyId);
+      if (index !== -1) {
+        if (isReinstating) {
+          reportedCompanies.value[index].status = 'active';
+          reportedCompanies.value[index].suspensionReason = null;
+        } else {
+          reportedCompanies.value[index].status = 'suspended';
+          reportedCompanies.value[index].suspensionReason = suspendReason.value;
+        }
+      }
+
+      showSuspendDialog.value = false;
+      suspendReason.value = '';
+    } else {
+      throw new Error(result.error || 'Failed to update company status');
+    }
+  } catch (error) {
+    console.error('Error in suspendCompany:', error);
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.message || 'Failed to update company status. Please try again.'
+    });
+  } finally {
+    suspendingId.value = null;
+  }
+};
+
+// Confirm ban company
+const confirmBan = (company) => {
+  currentCompany.value = company;
+  banReason.value = company.banReason || '';
+  showBanDialog.value = true;
+};
+
+// Ban company
+const banCompany = async () => {
+  const company = currentCompany.value;
+  if (!company) return;
+
+  const companyId = company.id;
+  if (!companyId) {
+    $q.notify({ type: 'negative', message: 'Invalid company ID' });
+    return;
+  }
+
+  if (!banReason.value) {
+    $q.notify({ type: 'warning', message: 'Please provide a reason for banning' });
+    return;
+  }
+
+  banningId.value = companyId;
+
+  try {
+    const response = await api.post(`/admin/companies/${companyId}/ban`, {
+      reason: banReason.value
+    });
+
+    if (response.data.success) {
+      $q.notify({
+        type: 'positive',
+        message: `${company.companyName} has been banned.`
+      });
+
+      // Update the company in the list
+      const index = reportedCompanies.value.findIndex(c => c.id === companyId);
+      if (index !== -1) {
+        reportedCompanies.value[index].status = 'banned';
+        reportedCompanies.value[index].banReason = banReason.value;
+      }
+
+      showBanDialog.value = false;
+      banReason.value = '';
+    } else {
+      throw new Error(response.data.error || 'Failed to ban company');
+    }
+  } catch (error) {
+    console.error('Error in banCompany:', error);
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.message || 'Failed to ban company. Please try again.'
+    });
+  } finally {
+    banningId.value = null;
+  }
+};
+
+// Update the suspendReportedUser function to match the same pattern
+const suspendReportedUser = (user) => {
+  $q.dialog({
+    title: 'Confirm Suspension',
+    message: `Are you sure you want to ${user.status === 'suspended' ? 'reinstate' : 'suspend'} ${user.name || 'this user'}?`,
+    cancel: {
+      label: 'Cancel',
+      color: 'grey',
+      flat: true
+    },
+    persistent: true,
+    ok: {
+      label: user.status === 'suspended' ? 'Reinstate' : 'Suspend',
+      color: user.status === 'suspended' ? 'positive' : 'negative',
+      flat: true
+    }
+  }).onOk(async () => {
+    try {
+      const endpoint = user.status === 'suspended'
+        ? `/admin/users/${user.id}/reinstate`
+        : `/admin/users/${user.id}/suspend`;
+
+      const method = user.status === 'suspended' ? 'PUT' : 'POST';
+
+      const response = await api({
+        method,
+        url: endpoint,
+        data: { reason: 'Reported by admin' }
+      });
+
+      if (response.data.success) {
+        // Update the user in the list
+        const index = reportedJobSeekers.value.findIndex(u => u.id === user.id);
+        if (index !== -1) {
+          reportedJobSeekers.value[index].status = user.status === 'suspended' ? 'active' : 'suspended';
+        }
+
+        $q.notify({
+          type: 'positive',
+          message: `User has been ${user.status === 'suspended' ? 'reinstated' : 'suspended'} successfully.`
+        });
+      } else {
+        throw new Error(response.data.error || 'Failed to update user status');
+      }
+    } catch (error) {
+      console.error('Error suspending user:', error);
+      $q.notify({
+        type: 'negative',
+        message: error.response?.data?.message || 'Failed to suspend user. Please try again.'
+      });
     }
   });
 };
 
-const suspendUser = (user) => {
-  $q.dialog({
-    title: 'Confirm Suspension',
-    message: `Are you sure you want to suspend this user? They will lose access to their account.`,
-    cancel: true,
-    persistent: true,
-    ok: { label: 'Suspend', color: 'orange' }
-  }).onOk(() => {
-    user.status = 'Suspended';
-    $q.notify({ type: 'positive', message: `${user.firstName} ${user.lastName} has been suspended.` });
-  });
-};
-
-const activateUser = (user) => {
-    user.status = 'Active';
-    $q.notify({ type: 'positive', message: `${user.firstName} ${user.lastName} has been re-activated.` });
-};
-
-const deleteUser = (user) => {
-  $q.dialog({
-    title: 'Confirm Deletion',
-    message: `This action is irreversible. Are you sure you want to permanently delete this account?`,
-    cancel: true,
-    persistent: true,
-    ok: { label: 'DELETE', color: 'negative' }
-  }).onOk(() => {
-    allUsers.value = allUsers.value.filter(u => u.id !== user.id);
-    $q.notify({ type: 'info', message: `User account has been deleted.` });
-  });
-};
-
+// Initial data load
 onMounted(() => {
-  fetchUsers();
+  fetchReportedCompanies();
 });
 </script>
 
 <style scoped>
-.user-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-  border-radius: 12px;
+.reported-company-card {
+  border-left: 4px solid #ff9800;
+  transition: transform 0.2s;
 }
-.user-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+
+.reported-company-card:hover {
+  transform: translateY(-2px);
+}
+
+.reported-user-card {
+  border-left: 4px solid #f44336;
+  transition: transform 0.2s;
+}
+
+.reported-user-card:hover {
+  transform: translateY(-2px);
 }
 </style>
